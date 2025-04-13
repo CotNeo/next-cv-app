@@ -1,0 +1,70 @@
+{
+  "nav": {
+    "home": "Ana Sayfa",
+    "templates": "Şablonlar",
+    "pricing": "Fiyatlandırma",
+    "about": "Hakkımızda",
+    "dashboard": "Panel",
+    "signIn": "Giriş Yap",
+    "signOut": "Çıkış Yap",
+    "getStarted": "Başla"
+  },
+  "home": {
+    "hero": {
+      "title": "Mükemmel CV'nizi Oluşturun",
+      "description": "Yapay zeka destekli araçlarımız ve profesyonel şablonlarımızla öne çıkan bir CV oluşturun",
+      "cta": "Ücretsiz Başlayın",
+      "dashboard": "Panele Git"
+    },
+    "features": {
+      "title": "Güçlü Özellikler",
+      "subtitle": "Etkileyici bir CV oluşturmak için ihtiyacınız olan her şey",
+      "ai": {
+        "title": "Yapay Zeka Önerileri",
+        "description": "CV içeriğinizi ve formatınızı geliştirmek için kişiselleştirilmiş öneriler alın"
+      },
+      "ats": {
+        "title": "ATS Optimizasyonu",
+        "description": "CV'nizin İşe Alım Takip Sistemlerinden başarıyla geçmesini sağlayın"
+      },
+      "templates": {
+        "title": "Profesyonel Şablonlar",
+        "description": "Her sektör için tasarlanmış 25+ profesyonel şablon arasından seçim yapın"
+      },
+      "multilingual": {
+        "title": "Çok Dilli Destek",
+        "description": "CV'nizi tek tıkla birden fazla dilde oluşturun ve çevirin"
+      }
+    },
+    "howItWorks": {
+      "title": "Nasıl Çalışır",
+      "subtitle": "Sadece 4 adımda mükemmel CV'nizi oluşturun",
+      "steps": {
+        "1": {
+          "title": "Şablon Seçin",
+          "description": "Profesyonel CV şablonları koleksiyonumuzdan seçim yapın"
+        },
+        "2": {
+          "title": "Bilgilerinizi Girin",
+          "description": "Kişisel bilgilerinizi, iş deneyiminizi ve eğitiminizi ekleyin"
+        },
+        "3": {
+          "title": "AI Önerileri Alın",
+          "description": "CV'nizi geliştirmek için kişiselleştirilmiş öneriler alın"
+        },
+        "4": {
+          "title": "İndirin ve Paylaşın",
+          "description": "CV'nizi PDF olarak dışa aktarın ve potansiyel işverenlerle paylaşın"
+        }
+      }
+    },
+    "testimonials": {
+      "title": "Kullanıcılarımız Ne Diyor",
+      "subtitle": "CV Builder'ı kullanan profesyonellerin başarı hikayeleri"
+    },
+    "cta": {
+      "title": "Mükemmel CV'nizi Oluşturmaya Hazır mısınız?",
+      "description": "CV Builder ile hayalindeki işi bulan binlerce profesyonele katılın"
+    }
+  }
+} 

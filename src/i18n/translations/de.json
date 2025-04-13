@@ -1,0 +1,70 @@
+{
+  "nav": {
+    "home": "Startseite",
+    "templates": "Vorlagen",
+    "pricing": "Preise",
+    "about": "Über uns",
+    "dashboard": "Dashboard",
+    "signIn": "Anmelden",
+    "signOut": "Abmelden",
+    "getStarted": "Jetzt starten"
+  },
+  "home": {
+    "hero": {
+      "title": "Erstellen Sie Ihren perfekten Lebenslauf",
+      "description": "Erstellen Sie einen professionellen Lebenslauf mit unseren KI-gestützten Tools und professionellen Vorlagen",
+      "cta": "Kostenlos starten",
+      "dashboard": "Zum Dashboard"
+    },
+    "features": {
+      "title": "Leistungsstarke Funktionen",
+      "subtitle": "Alles, was Sie für einen herausragenden Lebenslauf benötigen",
+      "ai": {
+        "title": "KI-gestützte Vorschläge",
+        "description": "Erhalten Sie personalisierte Empfehlungen zur Verbesserung Ihres Lebenslaufs"
+      },
+      "ats": {
+        "title": "ATS-Optimierung",
+        "description": "Sicherstellen, dass Ihr Lebenslauf durch Bewerber-Tracking-Systeme kommt"
+      },
+      "templates": {
+        "title": "Professionelle Vorlagen",
+        "description": "Wählen Sie aus über 25 professionell gestalteten Vorlagen für jede Branche"
+      },
+      "multilingual": {
+        "title": "Mehrsprachige Unterstützung",
+        "description": "Erstellen und übersetzen Sie Ihren Lebenslauf mit einem Klick in mehrere Sprachen"
+      }
+    },
+    "howItWorks": {
+      "title": "So funktioniert's",
+      "subtitle": "Erstellen Sie Ihren perfekten Lebenslauf in nur 4 einfachen Schritten",
+      "steps": {
+        "1": {
+          "title": "Vorlage auswählen",
+          "description": "Wählen Sie aus unserer Sammlung professioneller Lebenslauf-Vorlagen"
+        },
+        "2": {
+          "title": "Daten eingeben",
+          "description": "Fügen Sie Ihre persönlichen Informationen, Berufserfahrung und Ausbildung hinzu"
+        },
+        "3": {
+          "title": "KI-Empfehlungen erhalten",
+          "description": "Erhalten Sie personalisierte Empfehlungen zur Verbesserung Ihres Lebenslaufs"
+        },
+        "4": {
+          "title": "Herunterladen & Teilen",
+          "description": "Exportieren Sie Ihren Lebenslauf als PDF und teilen Sie ihn mit potenziellen Arbeitgebern"
+        }
+      }
+    },
+    "testimonials": {
+      "title": "Was unsere Nutzer sagen",
+      "subtitle": "Erfolgsgeschichten von Fachleuten, die CV Builder verwendet haben"
+    },
+    "cta": {
+      "title": "Bereit, Ihren perfekten Lebenslauf zu erstellen?",
+      "description": "Schließen Sie sich Tausenden von Fachleuten an, die mit CV Builder ihren Traumjob gefunden haben"
+    }
+  }
+} 

@@ -1,0 +1,70 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "templates": "Modèles",
+    "pricing": "Tarifs",
+    "about": "À propos",
+    "dashboard": "Tableau de bord",
+    "signIn": "Connexion",
+    "signOut": "Déconnexion",
+    "getStarted": "Commencer"
+  },
+  "home": {
+    "hero": {
+      "title": "Créez votre CV parfait",
+      "description": "Créez un CV professionnel avec nos outils basés sur l'IA et nos modèles professionnels",
+      "cta": "Commencer gratuitement",
+      "dashboard": "Aller au tableau de bord"
+    },
+    "features": {
+      "title": "Fonctionnalités puissantes",
+      "subtitle": "Tout ce dont vous avez besoin pour créer un CV exceptionnel",
+      "ai": {
+        "title": "Suggestions basées sur l'IA",
+        "description": "Obtenez des recommandations personnalisées pour améliorer votre CV"
+      },
+      "ats": {
+        "title": "Optimisation ATS",
+        "description": "Assurez-vous que votre CV passe les systèmes de suivi des candidats"
+      },
+      "templates": {
+        "title": "Modèles professionnels",
+        "description": "Choisissez parmi plus de 25 modèles professionnellement conçus pour tous les secteurs"
+      },
+      "multilingual": {
+        "title": "Support multilingue",
+        "description": "Créez et traduisez votre CV en plusieurs langues en un clic"
+      }
+    },
+    "howItWorks": {
+      "title": "Comment ça marche",
+      "subtitle": "Créez votre CV parfait en seulement 4 étapes simples",
+      "steps": {
+        "1": {
+          "title": "Choisissez un modèle",
+          "description": "Sélectionnez parmi notre collection de modèles de CV professionnels"
+        },
+        "2": {
+          "title": "Remplissez vos informations",
+          "description": "Ajoutez vos informations personnelles, expérience professionnelle et formation"
+        },
+        "3": {
+          "title": "Obtenez des suggestions IA",
+          "description": "Recevez des recommandations personnalisées pour améliorer votre CV"
+        },
+        "4": {
+          "title": "Téléchargez et partagez",
+          "description": "Exportez votre CV en PDF et partagez-le avec des employeurs potentiels"
+        }
+      }
+    },
+    "testimonials": {
+      "title": "Ce que disent nos utilisateurs",
+      "subtitle": "Histoires de réussite de professionnels ayant utilisé CV Builder"
+    },
+    "cta": {
+      "title": "Prêt à créer votre CV parfait ?",
+      "description": "Rejoignez des milliers de professionnels qui ont trouvé leur emploi de rêve avec CV Builder"
+    }
+  }
+} 
