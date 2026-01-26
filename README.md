@@ -1,28 +1,28 @@
 # CV Builder – Modern CV Creation Platform
 
-AI destekli, çok dilli CV oluşturma platformu. Next.js, TypeScript ve Tailwind CSS ile geliştirilmiştir.
+AI-powered, multilingual CV creation platform. Built with Next.js, TypeScript, and Tailwind CSS.
 
-## Özellikler
+## Features
 
-- **AI önerileri**: CV içeriğini ve biçimini iyileştirmek için kişiselleştirilmiş öneriler
-- **ATS uyumluluğu**: ATS incelemesi ve puanlama
-- **Profesyonel şablonlar**: 25+ şablon
-- **Çok dilli**: CV’yi birden fazla dile çevirme (AI ile)
-- **Bulut depolama**: CV’leri kaydetme ve yönetme
-- **Responsive**: Tüm cihazlarda uyumlu arayüz
+- **AI suggestions**: Personalized recommendations to improve CV content and formatting
+- **ATS compatibility**: ATS review and scoring
+- **Professional templates**: 16+ templates with thumbnails and detail preview
+- **Multilingual**: Translate your CV into multiple languages (AI-powered)
+- **Cloud storage**: Save and manage your CVs
+- **Responsive**: Consistent experience across all devices
 
-## Desteklenen Diller (i18n)
+## Supported Languages (i18n)
 
 - English, Türkçe, Deutsch, Русский, العربية, Français
 
-## Gereksinimler
+## Requirements
 
 - Node.js 18+
-- npm veya yarn
+- npm or yarn
 
-## Kurulum
+## Installation
 
-1. Repoyu klonlayın ve bağımlılıkları yükleyin:
+1. Clone the repo and install dependencies:
 
 ```bash
 git clone https://github.com/cotneo/next-cv-app.git
@@ -30,76 +30,76 @@ cd next-cv-app
 npm install
 ```
 
-2. `.env.local` oluşturun:
+2. Create `.env.local`:
 
 ```env
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key
 MONGODB_URI=mongodb://localhost:27017/cv-builder
 
-# Opsiyonel: Google OAuth
+# Optional: Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
 
-# AI özellikleri (ATS, çeviri, iyileştirme) için
+# AI features (ATS, translate, improve)
 OPENAI_API_KEY=your-openai-api-key
 ```
 
-3. Geliştirme sunucusunu başlatın:
+3. Start the dev server:
 
 ```bash
 npm run dev
 ```
 
-4. Tarayıcıda [http://localhost:3000](http://localhost:3000) adresini açın.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router)
-- **Dil**: TypeScript
+- **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
 - **Auth**: NextAuth.js (JWT, Credentials + Google OAuth)
-- **Veritabanı**: MongoDB (Mongoose)
+- **Database**: MongoDB (Mongoose)
 - **AI**: OpenAI API (GPT-4)
 
-## Proje Yapısı
+## Project Structure
 
 ```
 src/
 ├── app/
-│   ├── api/          # auth (NextAuth, register), cv (CRUD + aksiyonlar)
+│   ├── api/          # auth (NextAuth, register), cv (CRUD + actions)
 │   ├── auth/         # login, register
-│   ├── dashboard/    # liste, [id] detay/düzenleme, new
-│   ├── create/       # CV oluşturma
+│   ├── dashboard/    # list, [id] detail/edit, new
+│   ├── create/       # CV creation
 │   ├── templates, pricing, about, contact
 │   └── layout, page
-├── components/       # Navbar, Footer, CVForm, FeatureCard, vb.
+├── components/       # Navbar, Footer, CVForm, FeatureCard, etc.
 ├── hooks/            # useTranslation
-├── i18n/             # Dil ayarları ve çeviriler
+├── i18n/             # Language settings and translations
 ├── lib/              # auth, mongodb, openai
 ├── models/           # User, CV (Mongoose)
 ├── services/         # cvService
 └── types/
 ```
 
-## Kimlik Doğrulama
+## Authentication
 
-- E-posta / şifre (kayıt + giriş)
-- Google OAuth (opsiyonel)
-- Korumalı rotalar (dashboard, CV CRUD)
-- JWT oturum yönetimi
+- Email / password (register + login)
+- Google OAuth (optional)
+- Protected routes (dashboard, CV CRUD)
+- JWT session management
 
-## API Özeti
+## API Overview
 
-| Endpoint | Method | Açıklama |
-|----------|--------|----------|
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/api/auth/[...nextauth]` | GET, POST | NextAuth handler |
-| `/api/auth/register` | POST | Kullanıcı kaydı |
-| `/api/cv` | GET | CV listesi |
-| `/api/cv` | POST | Yeni CV oluştur |
-| `/api/cv/[id]` | GET, PUT, DELETE | CV getir/güncelle/sil |
-| `/api/cv/[id]` | POST | Aksiyonlar: `ats-review`, `translate`, `improve` |
+| `/api/auth/register` | POST | User registration |
+| `/api/cv` | GET | List CVs |
+| `/api/cv` | POST | Create new CV |
+| `/api/cv/[id]` | GET, PUT, DELETE | Get / update / delete CV |
+| `/api/cv/[id]` | POST | Actions: `ats-review`, `translate`, `improve` |
 
-## Lisans
+## License
 
-MIT – detaylar için [LICENSE](LICENSE) dosyasına bakın.
+MIT – see [LICENSE](LICENSE) for details.
