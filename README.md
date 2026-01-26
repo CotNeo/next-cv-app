@@ -25,7 +25,7 @@ AI destekli, çok dilli CV oluşturma platformu. Next.js, TypeScript ve Tailwind
 1. Repoyu klonlayın ve bağımlılıkları yükleyin:
 
 ```bash
-git clone https://github.com/yourusername/next-cv-app.git
+git clone https://github.com/cotneo/next-cv-app.git
 cd next-cv-app
 npm install
 ```
