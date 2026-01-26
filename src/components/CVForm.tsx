@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface CVFormData {
+export interface CVFormData {
   title: string;
   personalInfo: {
     name: string;
@@ -35,65 +35,82 @@ interface CVFormData {
   }[];
 }
 
-export default function CVForm() {
-  const router = useRouter();
-  const [formData, setFormData] = useState<CVFormData>({
-    title: '',
-    personalInfo: {
-      name: '',
-      email: '',
-      phone: '',
-      location: '',
-      website: '',
-      linkedin: '',
+const emptyFormData: CVFormData = {
+  title: '',
+  personalInfo: {
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    website: '',
+    linkedin: '',
+  },
+  summary: '',
+  workExperience: [
+    {
+      company: '',
+      position: '',
+      startDate: '',
+      endDate: '',
+      description: '',
     },
-    summary: '',
-    workExperience: [
-      {
-        company: '',
-        position: '',
-        startDate: '',
-        endDate: '',
-        description: '',
-      },
-    ],
-    education: [
-      {
-        institution: '',
-        degree: '',
-        field: '',
-        startDate: '',
-        endDate: '',
-      },
-    ],
-    skills: [''],
-    languages: [
-      {
-        language: '',
-        level: '',
-      },
-    ],
-  });
+  ],
+  education: [
+    {
+      institution: '',
+      degree: '',
+      field: '',
+      startDate: '',
+      endDate: '',
+    },
+  ],
+  skills: [''],
+  languages: [{ language: '', level: '' }],
+};
+
+type CVFormProps = {
+  initialData?: CVFormData | null;
+  onSubmit?: (data: CVFormData) => Promise<void>;
+  submitLabel?: string;
+};
+
+export default function CVForm({
+  initialData,
+  onSubmit,
+  submitLabel = 'CV Oluştur',
+}: CVFormProps) {
+  const router = useRouter();
+  const [formData, setFormData] = useState<CVFormData>(emptyFormData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    } else if (!onSubmit) {
+      setFormData(emptyFormData);
+    }
+  }, [initialData, onSubmit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     try {
-      const response = await fetch('/api/cv', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('CV oluşturulamadı');
+      if (onSubmit) {
+        await onSubmit(formData);
+      } else {
+        const response = await fetch('/api/cv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        });
+        if (!response.ok) throw new Error('CV oluşturulamadı');
+        const data = await response.json();
+        router.push(`/dashboard/${data._id}`);
       }
-
-      const data = await response.json();
-      router.push(`/dashboard/${data._id}`);
     } catch (error) {
-      console.error('CV oluşturma hatası:', error);
+      console.error('CV submit error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -153,7 +170,7 @@ export default function CVForm() {
     <form onSubmit={handleSubmit} className="space-y-8">
       {/* CV Başlığı */}
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="title" className="block text-sm font-medium text-stone-700">
           CV Başlığı
         </label>
         <input
@@ -161,17 +178,17 @@ export default function CVForm() {
           id="title"
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
           required
         />
       </div>
 
       {/* Kişisel Bilgiler */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900">Kişisel Bilgiler</h3>
+        <h3 className="text-lg font-medium text-stone-900">Kişisel Bilgiler</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="name" className="block text-sm font-medium text-stone-700">
               Ad Soyad
             </label>
             <input
@@ -184,12 +201,12 @@ export default function CVForm() {
                   personalInfo: { ...formData.personalInfo, name: e.target.value },
                 })
               }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
               required
             />
           </div>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-medium text-stone-700">
               E-posta
             </label>
             <input
@@ -202,12 +219,12 @@ export default function CVForm() {
                   personalInfo: { ...formData.personalInfo, email: e.target.value },
                 })
               }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
               required
             />
           </div>
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="phone" className="block text-sm font-medium text-stone-700">
               Telefon
             </label>
             <input
@@ -220,12 +237,12 @@ export default function CVForm() {
                   personalInfo: { ...formData.personalInfo, phone: e.target.value },
                 })
               }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
               required
             />
           </div>
           <div>
-            <label htmlFor="location" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="location" className="block text-sm font-medium text-stone-700">
               Konum
             </label>
             <input
@@ -238,7 +255,7 @@ export default function CVForm() {
                   personalInfo: { ...formData.personalInfo, location: e.target.value },
                 })
               }
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
               required
             />
           </div>
@@ -247,7 +264,7 @@ export default function CVForm() {
 
       {/* Özet */}
       <div>
-        <label htmlFor="summary" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="summary" className="block text-sm font-medium text-stone-700">
           Profesyonel Özet
         </label>
         <textarea
@@ -255,7 +272,7 @@ export default function CVForm() {
           rows={4}
           value={formData.summary}
           onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
           required
         />
       </div>
@@ -263,11 +280,11 @@ export default function CVForm() {
       {/* İş Deneyimi */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">İş Deneyimi</h3>
+          <h3 className="text-lg font-medium text-stone-900">İş Deneyimi</h3>
           <button
             type="button"
             onClick={addWorkExperience}
-            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
             Deneyim Ekle
           </button>
@@ -276,7 +293,7 @@ export default function CVForm() {
           <div key={index} className="space-y-4 p-4 border rounded-md">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor={`company-${index}`} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={`company-${index}`} className="block text-sm font-medium text-stone-700">
                   Şirket
                 </label>
                 <input
@@ -288,12 +305,12 @@ export default function CVForm() {
                     newExp[index].company = e.target.value;
                     setFormData({ ...formData, workExperience: newExp });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                   required
                 />
               </div>
               <div>
-                <label htmlFor={`position-${index}`} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={`position-${index}`} className="block text-sm font-medium text-stone-700">
                   Pozisyon
                 </label>
                 <input
@@ -305,14 +322,14 @@ export default function CVForm() {
                     newExp[index].position = e.target.value;
                     setFormData({ ...formData, workExperience: newExp });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                   required
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor={`startDate-${index}`} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={`startDate-${index}`} className="block text-sm font-medium text-stone-700">
                   Başlangıç Tarihi
                 </label>
                 <input
@@ -324,12 +341,12 @@ export default function CVForm() {
                     newExp[index].startDate = e.target.value;
                     setFormData({ ...formData, workExperience: newExp });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                   required
                 />
               </div>
               <div>
-                <label htmlFor={`endDate-${index}`} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={`endDate-${index}`} className="block text-sm font-medium text-stone-700">
                   Bitiş Tarihi
                 </label>
                 <input
@@ -341,13 +358,13 @@ export default function CVForm() {
                     newExp[index].endDate = e.target.value;
                     setFormData({ ...formData, workExperience: newExp });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                   required
                 />
               </div>
             </div>
             <div>
-              <label htmlFor={`description-${index}`} className="block text-sm font-medium text-gray-700">
+              <label htmlFor={`description-${index}`} className="block text-sm font-medium text-stone-700">
                 Açıklama
               </label>
               <textarea
@@ -359,7 +376,7 @@ export default function CVForm() {
                   newExp[index].description = e.target.value;
                   setFormData({ ...formData, workExperience: newExp });
                 }}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                 required
               />
             </div>
@@ -370,11 +387,11 @@ export default function CVForm() {
       {/* Eğitim */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Eğitim</h3>
+          <h3 className="text-lg font-medium text-stone-900">Eğitim</h3>
           <button
             type="button"
             onClick={addEducation}
-            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
             Eğitim Ekle
           </button>
@@ -383,7 +400,7 @@ export default function CVForm() {
           <div key={index} className="space-y-4 p-4 border rounded-md">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor={`institution-${index}`} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={`institution-${index}`} className="block text-sm font-medium text-stone-700">
                   Kurum
                 </label>
                 <input
@@ -395,12 +412,12 @@ export default function CVForm() {
                     newEdu[index].institution = e.target.value;
                     setFormData({ ...formData, education: newEdu });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                   required
                 />
               </div>
               <div>
-                <label htmlFor={`degree-${index}`} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={`degree-${index}`} className="block text-sm font-medium text-stone-700">
                   Derece
                 </label>
                 <input
@@ -412,14 +429,14 @@ export default function CVForm() {
                     newEdu[index].degree = e.target.value;
                     setFormData({ ...formData, education: newEdu });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                   required
                 />
               </div>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor={`field-${index}`} className="block text-sm font-medium text-gray-700">
+                <label htmlFor={`field-${index}`} className="block text-sm font-medium text-stone-700">
                   Alan
                 </label>
                 <input
@@ -431,13 +448,13 @@ export default function CVForm() {
                     newEdu[index].field = e.target.value;
                     setFormData({ ...formData, education: newEdu });
                   }}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                  className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                   required
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor={`eduStartDate-${index}`} className="block text-sm font-medium text-gray-700">
+                  <label htmlFor={`eduStartDate-${index}`} className="block text-sm font-medium text-stone-700">
                     Başlangıç
                   </label>
                   <input
@@ -449,12 +466,12 @@ export default function CVForm() {
                       newEdu[index].startDate = e.target.value;
                       setFormData({ ...formData, education: newEdu });
                     }}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label htmlFor={`eduEndDate-${index}`} className="block text-sm font-medium text-gray-700">
+                  <label htmlFor={`eduEndDate-${index}`} className="block text-sm font-medium text-stone-700">
                     Bitiş
                   </label>
                   <input
@@ -466,7 +483,7 @@ export default function CVForm() {
                       newEdu[index].endDate = e.target.value;
                       setFormData({ ...formData, education: newEdu });
                     }}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                     required
                   />
                 </div>
@@ -479,11 +496,11 @@ export default function CVForm() {
       {/* Yetenekler */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Yetenekler</h3>
+          <h3 className="text-lg font-medium text-stone-900">Yetenekler</h3>
           <button
             type="button"
             onClick={addSkill}
-            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
             Yetenek Ekle
           </button>
@@ -499,7 +516,7 @@ export default function CVForm() {
                   newSkills[index] = e.target.value;
                   setFormData({ ...formData, skills: newSkills });
                 }}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                 placeholder="Yetenek"
                 required
               />
@@ -511,11 +528,11 @@ export default function CVForm() {
       {/* Diller */}
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-medium text-gray-900">Diller</h3>
+          <h3 className="text-lg font-medium text-stone-900">Diller</h3>
           <button
             type="button"
             onClick={addLanguage}
-            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
+            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
             Dil Ekle
           </button>
@@ -531,7 +548,7 @@ export default function CVForm() {
                   newLangs[index].language = e.target.value;
                   setFormData({ ...formData, languages: newLangs });
                 }}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                 placeholder="Dil"
                 required
               />
@@ -544,7 +561,7 @@ export default function CVForm() {
                   newLangs[index].level = e.target.value;
                   setFormData({ ...formData, languages: newLangs });
                 }}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm"
                 required
               >
                 <option value="">Seviye Seçin</option>
@@ -564,9 +581,10 @@ export default function CVForm() {
       <div className="pt-5">
         <button
           type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          disabled={isSubmitting}
+          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          CV Oluştur
+          {isSubmitting ? 'Kaydediliyor…' : submitLabel}
         </button>
       </div>
     </form>

@@ -17,7 +17,7 @@ export default function CreateCVPage() {
     return null;
   }
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: import('@/components/CVForm').CVFormData) => {
     try {
       const response = await fetch('/api/cv', {
         method: 'POST',

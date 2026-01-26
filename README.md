@@ -1,143 +1,105 @@
-# CV Builder - Modern CV Creation Platform
+# CV Builder – Modern CV Creation Platform
 
-CV Builder is a modern, AI-powered platform that helps professionals create stunning resumes and CVs. Built with Next.js, TypeScript, and Tailwind CSS, it offers a seamless experience for creating professional documents.
+AI destekli, çok dilli CV oluşturma platformu. Next.js, TypeScript ve Tailwind CSS ile geliştirilmiştir.
 
-## 🌟 Features
+## Özellikler
 
-- **AI-Powered Suggestions**: Get personalized recommendations to improve your CV content and formatting
-- **ATS Optimization**: Ensure your CV passes through Applicant Tracking Systems
-- **Professional Templates**: Choose from 25+ professionally designed templates
-- **Multilingual Support**: Create and translate your CV in multiple languages
-- **Real-time Preview**: See your changes instantly
-- **Cloud Storage**: Save and access your CVs from anywhere
-- **PDF Export**: Download your CV in PDF format
-- **Responsive Design**: Works perfectly on all devices
+- **AI önerileri**: CV içeriğini ve biçimini iyileştirmek için kişiselleştirilmiş öneriler
+- **ATS uyumluluğu**: ATS incelemesi ve puanlama
+- **Profesyonel şablonlar**: 25+ şablon
+- **Çok dilli**: CV’yi birden fazla dile çevirme (AI ile)
+- **Bulut depolama**: CV’leri kaydetme ve yönetme
+- **Responsive**: Tüm cihazlarda uyumlu arayüz
 
-## 🗣️ Supported Languages
+## Desteklenen Diller (i18n)
 
-- English (English)
-- Türkçe (Turkish)
-- Deutsch (German)
-- Русский (Russian)
-- العربية (Arabic)
-- Français (French)
+- English, Türkçe, Deutsch, Русский, العربية, Français
 
-## 🚀 Getting Started
+## Gereksinimler
 
-### Prerequisites
+- Node.js 18+
+- npm veya yarn
 
-- Node.js 18.x or later
-- npm or yarn
+## Kurulum
 
-### Installation
+1. Repoyu klonlayın ve bağımlılıkları yükleyin:
 
-1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/cv-builder.git
-cd cv-builder
-```
-
-2. Install dependencies:
-```bash
+git clone https://github.com/yourusername/next-cv-app.git
+cd next-cv-app
 npm install
-# or
-yarn install
 ```
 
-3. Create a `.env.local` file in the root directory and add your environment variables:
+2. `.env.local` oluşturun:
+
 ```env
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=your-secret-key
+MONGODB_URI=mongodb://localhost:27017/cv-builder
+
+# Opsiyonel: Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# AI özellikleri (ATS, çeviri, iyileştirme) için
+OPENAI_API_KEY=your-openai-api-key
 ```
 
-4. Run the development server:
+3. Geliştirme sunucusunu başlatın:
+
 ```bash
 npm run dev
-# or
-yarn dev
 ```
 
-5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+4. Tarayıcıda [http://localhost:3000](http://localhost:3000) adresini açın.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Framework**: Next.js 14
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS
-- **Authentication**: NextAuth.js
-- **Database**: Prisma with PostgreSQL
-- **ORM**: Prisma
-- **UI Components**: Custom components with Tailwind CSS
-- **Form Handling**: React Hook Form
-- **State Management**: React Context
-- **Internationalization**: Custom i18n solution
+- **Framework**: Next.js 15 (App Router)
+- **Dil**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **Auth**: NextAuth.js (JWT, Credentials + Google OAuth)
+- **Veritabanı**: MongoDB (Mongoose)
+- **AI**: OpenAI API (GPT-4)
 
-## 📦 Project Structure
+## Proje Yapısı
 
 ```
 src/
-├── app/                    # Next.js app directory
-│   ├── api/               # API routes
-│   ├── auth/              # Authentication pages
-│   ├── dashboard/         # Dashboard pages
-│   ├── pricing/           # Pricing page
-│   ├── templates/         # Templates page
-│   ├── about/             # About page
-│   └── layout.tsx         # Root layout
-├── components/            # Reusable components
-├── hooks/                 # Custom hooks
-├── i18n/                  # Internationalization
-│   ├── settings.ts        # Language settings
-│   └── translations/      # Translation files
-├── lib/                   # Utility functions
-├── prisma/                # Database schema
-└── types/                 # TypeScript types
+├── app/
+│   ├── api/          # auth (NextAuth, register), cv (CRUD + aksiyonlar)
+│   ├── auth/         # login, register
+│   ├── dashboard/    # liste, [id] detay/düzenleme, new
+│   ├── create/       # CV oluşturma
+│   ├── templates, pricing, about, contact
+│   └── layout, page
+├── components/       # Navbar, Footer, CVForm, FeatureCard, vb.
+├── hooks/            # useTranslation
+├── i18n/             # Dil ayarları ve çeviriler
+├── lib/              # auth, mongodb, openai
+├── models/           # User, CV (Mongoose)
+├── services/         # cvService
+└── types/
 ```
 
-## 🔒 Authentication
+## Kimlik Doğrulama
 
-- Google OAuth integration
-- Email/password authentication
-- Protected routes
-- Session management
+- E-posta / şifre (kayıt + giriş)
+- Google OAuth (opsiyonel)
+- Korumalı rotalar (dashboard, CV CRUD)
+- JWT oturum yönetimi
 
-## 💳 Pricing Plans
+## API Özeti
 
-1. **Free Plan** ($0)
-   - 1 free CV creation
-   - Basic templates
-   - PDF export
-   - Basic support
+| Endpoint | Method | Açıklama |
+|----------|--------|----------|
+| `/api/auth/[...nextauth]` | GET, POST | NextAuth handler |
+| `/api/auth/register` | POST | Kullanıcı kaydı |
+| `/api/cv` | GET | CV listesi |
+| `/api/cv` | POST | Yeni CV oluştur |
+| `/api/cv/[id]` | GET, PUT, DELETE | CV getir/güncelle/sil |
+| `/api/cv/[id]` | POST | Aksiyonlar: `ats-review`, `translate`, `improve` |
 
-2. **Pay-as-you-go** ($0.50/CV)
-   - Unlimited CVs
-   - All templates
-   - AI suggestions
-   - ATS optimization
-   - Priority support
+## Lisans
 
-3. **Monthly Plan** ($3/month)
-   - All features
-   - Cloud storage
-   - Collaboration tools
-   - Premium support
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Next.js team for the amazing framework
-- Tailwind CSS team for the utility-first CSS framework
-- All contributors and users of CV Builder
+MIT – detaylar için [LICENSE](LICENSE) dosyasına bakın.

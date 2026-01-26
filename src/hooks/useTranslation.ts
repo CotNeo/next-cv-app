@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { defaultLocale, ValidLocale } from '@/i18n/settings';
 
 // Import all translations
@@ -22,21 +21,17 @@ const translations: Record<ValidLocale, TranslationsType> = {
 };
 
 export function useTranslation(locale: ValidLocale = defaultLocale) {
-  const router = useRouter();
-
   const t = useCallback((key: string) => {
     const keys = key.split('.');
-    let value: any = translations[locale];
-    
+    let value: unknown = translations[locale];
     for (const k of keys) {
-      if (value && typeof value === 'object' && k in value) {
-        value = value[k];
+      if (value && typeof value === 'object' && k in (value as object)) {
+        value = (value as Record<string, unknown>)[k];
       } else {
         return key;
       }
     }
-    
-    return value as string;
+    return typeof value === 'string' ? value : key;
   }, [locale]);
 
   const changeLocale = useCallback((newLocale: ValidLocale) => {

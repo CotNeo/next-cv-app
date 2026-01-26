@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 const languages = [
   { code: 'en', name: 'English' },
@@ -13,11 +12,11 @@ const languages = [
 
 export default function LanguageSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
 
   const handleLanguageChange = (langCode: string) => {
-    // TODO: Implement language change logic
+    localStorage.setItem('locale', langCode);
     setIsOpen(false);
+    window.location.reload();
   };
 
   return (

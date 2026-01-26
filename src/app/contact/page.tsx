@@ -101,15 +101,15 @@ export default function ContactPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-stone-50">
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
+      <div className="bg-stone-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-white sm:text-5xl md:text-6xl mb-6">
               İletişime Geçin
             </h1>
-            <p className="text-xl text-indigo-100 max-w-3xl mx-auto leading-relaxed">
+            <p className="text-xl text-stone-400 max-w-3xl mx-auto leading-relaxed">
               Sorularınız mı var? Önerileriniz mi? Bizimle iletişime geçin, size yardımcı olmaktan mutluluk duyarız.
             </p>
           </div>
@@ -131,7 +131,7 @@ export default function ContactPage() {
 
             {/* Success Message */}
             {submitSuccess && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex">
                   <div className="flex-shrink-0">
                     <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
@@ -160,7 +160,7 @@ export default function ContactPage() {
                     type="text"
                     id="name"
                     {...register('name', { required: 'Ad soyad gereklidir' })}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 ${
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-600 focus:border-teal-600 transition-colors duration-200 ${
                       errors.name ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="Adınız ve soyadınız"
@@ -184,7 +184,7 @@ export default function ContactPage() {
                         message: 'Geçerli bir e-posta adresi girin'
                       }
                     })}
-                    className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 ${
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-600 focus:border-teal-600 transition-colors duration-200 ${
                       errors.email ? 'border-red-300' : 'border-gray-300'
                     }`}
                     placeholder="ornek@email.com"
@@ -203,7 +203,7 @@ export default function ContactPage() {
                   type="text"
                   id="subject"
                   {...register('subject', { required: 'Konu gereklidir' })}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-600 focus:border-teal-600 transition-colors duration-200 ${
                     errors.subject ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Mesajınızın konusu"
@@ -221,7 +221,7 @@ export default function ContactPage() {
                   id="message"
                   rows={6}
                   {...register('message', { required: 'Mesaj gereklidir' })}
-                  className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors duration-200 resize-none ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-teal-600 focus:border-teal-600 transition-colors duration-200 resize-none ${
                     errors.message ? 'border-red-300' : 'border-gray-300'
                   }`}
                   placeholder="Mesajınızı buraya yazın..."
@@ -234,7 +234,7 @@ export default function ContactPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-6 rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full bg-teal-700 text-white py-3 px-6 rounded font-medium hover:bg-teal-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <div className="flex items-center justify-center">
@@ -268,9 +268,9 @@ export default function ContactPage() {
                 <a
                   key={index}
                   href={info.link}
-                  className="flex items-start space-x-4 p-6 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                  className="flex items-start space-x-4 p-6 bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                 >
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white">
+                  <div className="flex-shrink-0 w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center text-white">
                     {info.icon}
                   </div>
                   <div>
@@ -297,7 +297,7 @@ export default function ContactPage() {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-white hover:from-indigo-600 hover:to-purple-600 transition-all duration-200 transform hover:scale-110 shadow-lg"
+                    className="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center text-white hover:bg-teal-700 transition-all duration-200 transform hover:scale-110 shadow-lg"
                   >
                     {social.icon}
                   </a>
@@ -306,7 +306,7 @@ export default function ContactPage() {
             </div>
 
             {/* FAQ Link */}
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-6">
+            <div className="bg-stone-100 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Sık Sorulan Sorular
               </h3>
@@ -315,9 +315,9 @@ export default function ContactPage() {
               </p>
               <a
                 href="/faq"
-                className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium"
+                className="inline-flex items-center text-teal-700 hover:text-teal-800 font-medium"
               >
-                SSS'yi Görüntüle
+                SSS&apos;yi Görüntüle
                 <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -328,8 +328,8 @@ export default function ContactPage() {
 
         {/* Map Section */}
         <div className="mt-16">
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="h-96 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="h-96 bg-stone-200 flex items-center justify-center">
               <div className="text-center">
                 <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

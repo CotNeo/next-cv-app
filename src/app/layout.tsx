@@ -1,12 +1,16 @@
 'use client';
 
 import { SessionProvider } from 'next-auth/react';
-import { Inter } from 'next/font/google';
+import { Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 
-const inter = Inter({ subsets: ['latin'] });
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-plus-jakarta',
+});
 
 export default function RootLayout({
   children,
@@ -14,13 +18,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={plusJakarta.variable}>
+      <body className="font-sans antialiased">
         <SessionProvider>
           <div className="min-h-screen flex flex-col">
             <Navbar />
             
-            <main className="flex-grow pt-16">
+            <main className="flex-grow pt-14">
               {children}
             </main>
             

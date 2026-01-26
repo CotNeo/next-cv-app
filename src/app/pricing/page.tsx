@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 
 const plans = [
@@ -59,17 +58,15 @@ const plans = [
 ];
 
 export default function PricingPage() {
-  const [selectedPlan, setSelectedPlan] = useState('Monthly');
-
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className="min-h-screen bg-stone-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-stone-900 mb-4">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-xl text-gray-600">
-            Choose the plan that's right for you
+          <p className="text-xl text-stone-600">
+            Choose the plan that&apos;s right for you
           </p>
         </div>
 
@@ -78,29 +75,29 @@ export default function PricingPage() {
             <div
               key={plan.name}
               className={`bg-white rounded-lg shadow-md overflow-hidden ${
-                plan.popular ? 'ring-2 ring-indigo-500' : ''
+                plan.popular ? 'ring-2 ring-teal-600' : ''
               }`}
             >
               {plan.popular && (
-                <div className="bg-indigo-500 text-white text-center py-1">
+                <div className="bg-teal-600 text-white text-center py-1">
                   Most Popular
                 </div>
               )}
               <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                <h3 className="text-2xl font-bold text-stone-900 mb-2">
                   {plan.name}
                 </h3>
                 <div className="flex items-baseline mb-4">
-                  <span className="text-4xl font-bold text-gray-900">
+                  <span className="text-4xl font-bold text-stone-900">
                     {plan.price}
                   </span>
                   {plan.name !== 'Free' && (
-                    <span className="text-gray-500 ml-1">
+                    <span className="text-stone-500 ml-1">
                       {plan.name === 'Monthly' ? '/month' : '/CV'}
                     </span>
                   )}
                 </div>
-                <p className="text-gray-600 mb-6">{plan.description}</p>
+                <p className="text-stone-600 mb-6">{plan.description}</p>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-center">
@@ -115,7 +112,7 @@ export default function PricingPage() {
                       >
                         <path d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-gray-800 font-medium">{feature}</span>
+                      <span className="text-stone-800 font-medium">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -123,8 +120,8 @@ export default function PricingPage() {
                   href={plan.buttonLink}
                   className={`block w-full text-center px-4 py-2 rounded-md text-sm font-medium ${
                     plan.popular
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                      : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                      ? 'bg-teal-700 text-white hover:bg-teal-800'
+                      : 'bg-stone-100 text-stone-900 hover:bg-stone-200'
                   }`}
                 >
                   {plan.buttonText}
@@ -136,40 +133,40 @@ export default function PricingPage() {
 
         {/* FAQ Section */}
         <div className="mt-16">
-          <h2 className="text-3xl font-bold text-gray-900 text-center mb-8">
+          <h2 className="text-3xl font-bold text-stone-900 text-center mb-8">
             Frequently Asked Questions
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-stone-900 mb-2">
                 Can I switch plans later?
               </h3>
-              <p className="text-gray-600">
+              <p className="text-stone-600">
                 Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-stone-900 mb-2">
                 What payment methods do you accept?
               </h3>
-              <p className="text-gray-600">
+              <p className="text-stone-600">
                 We accept all major credit cards, PayPal, and other popular payment methods.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-stone-900 mb-2">
                 Is there a free trial?
               </h3>
-              <p className="text-gray-600">
+              <p className="text-stone-600">
                 Yes, you can create one CV for free to try out our service before committing to a paid plan.
               </p>
             </div>
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <h3 className="text-lg font-medium text-stone-900 mb-2">
                 Can I cancel anytime?
               </h3>
-              <p className="text-gray-600">
-                Yes, you can cancel your subscription at any time. You'll continue to have access until the end of your billing period.
+              <p className="text-stone-600">
+                Yes, you can cancel your subscription at any time. You&apos;ll continue to have access until the end of your billing period.
               </p>
             </div>
           </div>
