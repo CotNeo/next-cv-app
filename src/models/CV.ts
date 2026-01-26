@@ -18,6 +18,7 @@ const cvSchema = new mongoose.Schema(
       location: String,
       website: String,
       linkedin: String,
+      profilePhoto: String, // Base64 or URL
     },
     summary: String,
     workExperience: [
@@ -27,6 +28,7 @@ const cvSchema = new mongoose.Schema(
         startDate: Date,
         endDate: Date,
         description: String,
+        isCurrent: Boolean,
       },
     ],
     education: [
@@ -36,6 +38,7 @@ const cvSchema = new mongoose.Schema(
         field: String,
         startDate: Date,
         endDate: Date,
+        isCurrent: Boolean,
       },
     ],
     skills: [String],
@@ -45,11 +48,54 @@ const cvSchema = new mongoose.Schema(
         level: String,
       },
     ],
+    certifications: [
+      {
+        name: String,
+        issuer: String,
+        date: Date,
+        expiryDate: Date,
+        credentialId: String,
+        credentialUrl: String,
+      },
+    ],
+    projects: [
+      {
+        name: String,
+        description: String,
+        technologies: [String],
+        url: String,
+        startDate: Date,
+        endDate: Date,
+        isCurrent: Boolean,
+      },
+    ],
+    references: [
+      {
+        name: String,
+        position: String,
+        company: String,
+        email: String,
+        phone: String,
+      },
+    ],
     atsScore: {
       type: Number,
       default: 0,
     },
     aiSuggestions: [String],
+    templateId: {
+      type: String,
+      default: 'modern',
+    },
+    shareToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

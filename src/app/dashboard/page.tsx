@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
+import ConfirmModal from '@/components/ConfirmModal';
 
 interface CV {
   _id: string;
@@ -17,6 +19,11 @@ export default function DashboardPage() {
   const router = useRouter();
   const [cvs, setCVs] = useState<CV[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; cvId: string | null; cvTitle: string }>({
+    isOpen: false,
+    cvId: null,
+    cvTitle: '',
+  });
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -34,8 +41,28 @@ export default function DashboardPage() {
       setCVs(data);
     } catch (e) {
       console.error('CV yükleme hatası:', e);
+      toast.error('CV\'ler yüklenirken bir hata oluştu');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteClick = (cvId: string, cvTitle: string) => {
+    setDeleteModal({ isOpen: true, cvId, cvTitle });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteModal.cvId) return;
+    try {
+      const res = await fetch(`/api/cv/${deleteModal.cvId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error('CV silinemedi');
+      toast.success('CV başarıyla silindi');
+      setCVs((prev) => prev.filter((cv) => cv._id !== deleteModal.cvId));
+    } catch (e) {
+      console.error('CV silme hatası:', e);
+      toast.error('CV silinirken bir hata oluştu');
     }
   };
 
@@ -82,18 +109,37 @@ export default function DashboardPage() {
                     <span className="text-sm text-stone-600">ATS: {cv.atsScore}</span>
                   )}
                   {!cv.atsScore && <span />}
-                  <Link
-                    href={`/dashboard/${cv._id}`}
-                    className="text-sm font-medium text-teal-700 hover:text-teal-800"
-                  >
-                    Düzenle
-                  </Link>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/dashboard/${cv._id}`}
+                      className="text-sm font-medium text-teal-700 hover:text-teal-800"
+                    >
+                      Düzenle
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteClick(cv._id, cv.title)}
+                      className="text-sm font-medium text-red-600 hover:text-red-700"
+                    >
+                      Sil
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, cvId: null, cvTitle: '' })}
+        onConfirm={handleDeleteConfirm}
+        title="CV&apos;yi Sil"
+        message={`"${deleteModal.cvTitle}" adlı CV&apos;yi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.`}
+        confirmText="Sil"
+        cancelText="İptal"
+        variant="danger"
+      />
     </div>
   );
 }

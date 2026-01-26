@@ -7,6 +7,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { ValidLocale, defaultLocale } from '@/i18n/settings';
 import FeatureCard from '@/components/features/FeatureCard';
 import HowItWorksStep from '@/components/features/HowItWorksStep';
+import Hero3D from '@/components/Hero3D';
 
 const features = [
   { key: 'ai', icon: '◎' },
@@ -30,43 +31,48 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Hero */}
-      <section className="bg-stone-900 text-white">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
-          <div className="max-w-2xl">
-            <p className="text-stone-400 text-sm font-medium uppercase tracking-wider mb-4">
-              AI destekli CV
-            </p>
-            <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-6">
-              {t('home.hero.title')}
-            </h1>
-            <p className="text-lg text-stone-300 mb-10 leading-relaxed">
-              {t('home.hero.description')}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              {session ? (
-                <Link
-                  href="/dashboard"
-                  className="inline-flex items-center gap-2 bg-white text-stone-900 px-5 py-3 rounded font-medium hover:bg-stone-100 transition-colors"
-                >
-                  {t('home.hero.dashboard')}
-                  <span className="text-stone-500">→</span>
-                </Link>
-              ) : (
-                <>
+      <section className="bg-stone-900 text-white relative overflow-hidden min-h-[600px] sm:min-h-[700px]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            <div className="relative z-10">
+              <p className="text-stone-400 text-sm font-medium uppercase tracking-wider mb-4">
+                AI destekli CV
+              </p>
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-6">
+                {t('home.hero.title')}
+              </h1>
+              <p className="text-lg text-stone-300 mb-10 leading-relaxed">
+                {t('home.hero.description')}
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {session ? (
                   <Link
-                    href="/auth/register"
-                    className="inline-flex items-center gap-2 bg-teal-600 text-white px-5 py-3 rounded font-medium hover:bg-teal-700 transition-colors"
+                    href="/dashboard"
+                    className="inline-flex items-center gap-2 bg-white text-stone-900 px-5 py-3 rounded font-medium hover:bg-stone-100 transition-colors"
                   >
-                    {t('home.hero.cta')}
+                    {t('home.hero.dashboard')}
+                    <span className="text-stone-500">→</span>
                   </Link>
-                  <Link
-                    href="/templates"
-                    className="inline-flex items-center gap-2 border border-stone-600 text-white px-5 py-3 rounded font-medium hover:bg-stone-800 transition-colors"
-                  >
-                    Şablonları İncele
-                  </Link>
-                </>
-              )}
+                ) : (
+                  <>
+                    <Link
+                      href="/auth/register"
+                      className="inline-flex items-center gap-2 bg-teal-600 text-white px-5 py-3 rounded font-medium hover:bg-teal-700 transition-colors"
+                    >
+                      {t('home.hero.cta')}
+                    </Link>
+                    <Link
+                      href="/templates"
+                      className="inline-flex items-center gap-2 border border-stone-600 text-white px-5 py-3 rounded font-medium hover:bg-stone-800 transition-colors"
+                    >
+                      Şablonları İncele
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="hidden lg:block relative z-10 h-[500px]">
+              <Hero3D />
             </div>
           </div>
         </div>

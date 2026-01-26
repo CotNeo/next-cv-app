@@ -126,4 +126,50 @@ export async function improveCV(cvId: string) {
     console.error('Error improving CV:', error);
     throw error;
   }
+}
+
+export async function getCVByShareToken(shareToken: string) {
+  try {
+    await connectToDatabase();
+    const cv = await CV.findOne({ shareToken, isPublic: true });
+    if (!cv) throw new Error('CV not found or not public');
+    return cv;
+  } catch (error) {
+    console.error('Error getting CV by share token:', error);
+    throw error;
+  }
+}
+
+export async function generateShareToken(cvId: string) {
+  try {
+    await connectToDatabase();
+    const crypto = await import('crypto');
+    const shareToken = crypto.randomBytes(32).toString('hex');
+    const cv = await CV.findByIdAndUpdate(
+      cvId,
+      { $set: { shareToken, isPublic: true } },
+      { new: true }
+    );
+    if (!cv) throw new Error('CV not found');
+    return shareToken;
+  } catch (error) {
+    console.error('Error generating share token:', error);
+    throw error;
+  }
+}
+
+export async function revokeShareToken(cvId: string) {
+  try {
+    await connectToDatabase();
+    const cv = await CV.findByIdAndUpdate(
+      cvId,
+      { $set: { shareToken: null, isPublic: false } },
+      { new: true }
+    );
+    if (!cv) throw new Error('CV not found');
+    return cv;
+  } catch (error) {
+    console.error('Error revoking share token:', error);
+    throw error;
+  }
 } 

@@ -49,6 +49,28 @@ body {
   background: #78716c;
 }
 
+@media print {
+  body {
+    background: white;
+  }
+  .print\:hidden {
+    display: none !important;
+  }
+  .print\:block {
+    display: block !important;
+  }
+  .print\:shadow-none {
+    box-shadow: none !important;
+  }
+  .print\:rounded-none {
+    border-radius: 0 !important;
+  }
+  @page {
+    margin: 0;
+    size: A4;
+  }
+}
+
 *:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
