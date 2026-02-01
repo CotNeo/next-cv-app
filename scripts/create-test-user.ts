@@ -1,11 +1,7 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
+import './load-env';
 import { connectToDatabase } from '../src/lib/mongodb';
 import User from '../src/models/User';
 import { hash } from 'bcryptjs';
-
-// Load .env.local file
-config({ path: resolve(__dirname, '../.env.local') });
 
 async function createTestUser() {
   try {
