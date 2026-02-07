@@ -9,7 +9,9 @@ import CVRender from '@/components/cv/CVRender';
 import TemplateThumbnail from '@/components/templates/TemplateThumbnail';
 import Link from 'next/link';
 import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
-import { getTemplateById, templates, categories } from '@/data/templates';
+import { templates, categories } from '@/data/templates';
+import { useTranslation } from '@/hooks/useTranslation';
+import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 interface CV {
   _id: string;
@@ -81,14 +83,16 @@ function toYyyyMmDd(val: string | Date | undefined): string {
 function TemplateSelectorComponent({
   currentTemplate,
   onSelect,
+  t,
 }: {
   currentTemplate: TemplateVariant;
   onSelect: (templateId: TemplateVariant) => void;
+  t: (key: string) => string;
 }) {
-  const [selectedCategory, setSelectedCategory] = useState('Tümü');
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const filteredTemplates = templates.filter((t) => {
-    return selectedCategory === 'Tümü' || t.category === selectedCategory;
+  const filteredTemplates = templates.filter((tm) => {
+    return selectedCategory === 'all' || tm.category === selectedCategory;
   });
 
   return (
@@ -104,32 +108,32 @@ function TemplateSelectorComponent({
                 : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
-            {c.name} ({c.count})
+            {c.name === 'all' ? t('templates.categories.all') : t('templates.categories.' + c.name.toLowerCase())} ({c.count})
           </button>
         ))}
       </div>
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 max-h-96 overflow-y-auto">
-        {filteredTemplates.map((t) => (
+        {filteredTemplates.map((tm) => (
           <button
-            key={t.id}
-            onClick={() => onSelect(t.id)}
+            key={tm.id}
+            onClick={() => onSelect(tm.id)}
             className={`group rounded-lg border-2 p-3 bg-white transition-all ${
-              currentTemplate === t.id
+              currentTemplate === tm.id
                 ? 'border-teal-600 bg-teal-50 shadow-md'
                 : 'border-stone-200 hover:border-teal-300 hover:shadow-sm'
             }`}
           >
             <div className="flex justify-center mb-2">
-              <TemplateThumbnail variant={t.id} />
+              <TemplateThumbnail variant={tm.id} />
             </div>
             <p className={`text-xs font-medium text-center ${
-              currentTemplate === t.id ? 'text-teal-700' : 'text-stone-700'
+              currentTemplate === tm.id ? 'text-teal-700' : 'text-stone-700'
             }`}>
-              {t.name}
+              {t('templates.items.' + tm.id + '.name')}
             </p>
-            {t.popular && (
-              <span className="block text-[10px] text-teal-600 text-center mt-1">Popüler</span>
+            {tm.popular && (
+              <span className="block text-[10px] text-teal-600 text-center mt-1">{t('templates.popular')}</span>
             )}
           </button>
         ))}
@@ -248,6 +252,8 @@ export default function CVDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const { data: session, status } = useSession();
+  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
+  const { t } = useTranslation(currentLocale);
   const [cv, setCV] = useState<CV | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -255,6 +261,11 @@ export default function CVDetailPage({
   const [expandedSuggestions, setExpandedSuggestions] = useState<boolean[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateVariant | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('locale') as ValidLocale | null;
+    if (saved) setCurrentLocale(saved);
+  }, []);
 
   const fetchCV = useCallback(async () => {
     try {
@@ -307,10 +318,10 @@ export default function CVDetailPage({
       setSelectedTemplate((updated.templateId as TemplateVariant) || 'modern');
       setIsEditing(false);
       setShowTemplateSelector(false);
-      toast.success('CV başarıyla güncellendi');
+      toast.success(t('dashboard.detail.updateSuccess'));
     } catch (e) {
       console.error('Update CV error:', e);
-      toast.error('CV güncellenirken bir hata oluştu');
+      toast.error(t('dashboard.detail.updateError'));
     }
   };
 
@@ -333,7 +344,7 @@ export default function CVDetailPage({
 
   const handleTranslate = async (targetLanguage: string) => {
     try {
-      toast.loading('CV çevriliyor...', { id: 'translate' });
+      toast.loading(t('dashboard.toast.translateLoading'), { id: 'translate' });
       const res = await fetch(`/api/cv/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -344,16 +355,16 @@ export default function CVDetailPage({
       });
       if (!res.ok) throw new Error('Translate failed');
       await fetchCV();
-      toast.success('CV başarıyla çevrildi', { id: 'translate' });
+      toast.success(t('dashboard.toast.translateSuccess'), { id: 'translate' });
     } catch (e) {
       console.error('Translate error:', e);
-      toast.error('CV çevrilirken bir hata oluştu', { id: 'translate' });
+      toast.error(t('dashboard.toast.translateError'), { id: 'translate' });
     }
   };
 
   const handleImprove = async () => {
     try {
-      toast.loading('CV iyileştiriliyor...', { id: 'improve' });
+      toast.loading(t('dashboard.toast.improveLoading'), { id: 'improve' });
       const res = await fetch(`/api/cv/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -361,10 +372,10 @@ export default function CVDetailPage({
       });
       if (!res.ok) throw new Error('Improve failed');
       await fetchCV();
-      toast.success('CV başarıyla iyileştirildi', { id: 'improve' });
+      toast.success(t('dashboard.toast.improveSuccess'), { id: 'improve' });
     } catch (e) {
       console.error('Improve error:', e);
-      toast.error('CV iyileştirilirken bir hata oluştu', { id: 'improve' });
+      toast.error(t('dashboard.toast.improveError'), { id: 'improve' });
     }
   };
 
@@ -378,11 +389,11 @@ export default function CVDetailPage({
       const link = `${window.location.origin}/cv/${data.shareToken}`;
       setShareLink(link);
       await navigator.clipboard.writeText(link);
-      toast.success('Paylaşım linki oluşturuldu ve panoya kopyalandı');
+      toast.success(t('dashboard.toast.shareSuccess'));
       await fetchCV();
     } catch (e) {
       console.error('Share error:', e);
-      toast.error('Paylaşım linki oluşturulurken bir hata oluştu');
+      toast.error(t('dashboard.toast.shareError'));
     }
   };
 
@@ -393,11 +404,11 @@ export default function CVDetailPage({
       });
       if (!res.ok) throw new Error('Unshare failed');
       setShareLink(null);
-      toast.success('Paylaşım kapatıldı');
+      toast.success(t('dashboard.toast.unshareSuccess'));
       await fetchCV();
     } catch (e) {
       console.error('Unshare error:', e);
-      toast.error('Paylaşım kapatılırken bir hata oluştu');
+      toast.error(t('dashboard.toast.unshareError'));
     }
   };
 
@@ -405,10 +416,10 @@ export default function CVDetailPage({
     if (!shareLink) return;
     try {
       await navigator.clipboard.writeText(shareLink);
-      toast.success('Link panoya kopyalandı');
+      toast.success(t('dashboard.toast.copySuccess'));
     } catch (e) {
       console.error('Copy error:', e);
-      toast.error('Link kopyalanırken bir hata oluştu');
+      toast.error(t('dashboard.toast.copyError'));
     }
   };
 
@@ -424,12 +435,12 @@ export default function CVDetailPage({
   if (!cv) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-stone-600">CV bulunamadı.</p>
+        <p className="text-stone-600">{t('dashboard.detail.cvNotFound')}</p>
         <Link
           href="/dashboard"
           className="text-teal-700 hover:text-teal-800 font-medium"
         >
-          ← Dashboard&apos;a dön
+          {t('dashboard.detail.backToDashboard')}
         </Link>
       </div>
     );
@@ -447,7 +458,7 @@ export default function CVDetailPage({
               href="/dashboard"
               className="text-teal-700 hover:text-teal-800 text-sm font-medium"
             >
-              ← Dashboard
+              {t('dashboard.detail.backToDashboard')}
             </Link>
             <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 mt-1">
               {cv.title}
@@ -458,28 +469,34 @@ export default function CVDetailPage({
               href={`/dashboard/${id}/view`}
               className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-stone-700 bg-white hover:bg-stone-50"
             >
-              Görüntüle
+              {t('dashboard.detail.view')}
+            </Link>
+            <Link
+              href={`/dashboard/${id}/cover-letter`}
+              className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-stone-700 bg-white hover:bg-stone-50"
+            >
+              {t('dashboard.detail.coverLetter')}
             </Link>
             <button
               type="button"
               onClick={() => setIsEditing(!isEditing)}
               className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-stone-700 bg-white hover:bg-stone-50"
             >
-              {isEditing ? 'İptal' : 'Düzenle'}
+              {isEditing ? t('dashboard.detail.cancel') : t('dashboard.detail.edit')}
             </button>
             <button
               type="button"
               onClick={handleATSReview}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded text-white bg-teal-700 hover:bg-teal-800"
             >
-              ATS İncelemesi
+              {t('dashboard.detail.atsReview')}
             </button>
             <button
               type="button"
               onClick={handleImprove}
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded text-white bg-teal-700 hover:bg-teal-800"
             >
-              AI ile İyileştir
+              {t('dashboard.detail.improveWithAi')}
             </button>
             {shareLink ? (
               <>
@@ -488,14 +505,14 @@ export default function CVDetailPage({
                   onClick={copyShareLink}
                   className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-stone-700 bg-white hover:bg-stone-50"
                 >
-                  Linki Kopyala
+                  {t('dashboard.detail.copyLink')}
                 </button>
                 <button
                   type="button"
                   onClick={handleUnshare}
                   className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-red-700 bg-white hover:bg-red-50"
                 >
-                  Paylaşımı Kapat
+                  {t('dashboard.detail.closeShare')}
                 </button>
               </>
             ) : (
@@ -504,7 +521,7 @@ export default function CVDetailPage({
                 onClick={handleShare}
                 className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-stone-700 bg-white hover:bg-stone-50"
               >
-                Paylaş
+                {t('dashboard.detail.share')}
               </button>
             )}
           </div>
@@ -514,13 +531,13 @@ export default function CVDetailPage({
           <div className="space-y-6">
             <div className="bg-white shadow rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-stone-900">CV Şablonu</h3>
+                <h3 className="text-lg font-semibold text-stone-900">{t('dashboard.detail.cvTemplate')}</h3>
                 <button
                   type="button"
                   onClick={() => setShowTemplateSelector(!showTemplateSelector)}
                   className="px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                 >
-                  {showTemplateSelector ? 'Şablon Seçimini Gizle' : 'Şablon Değiştir'}
+                  {showTemplateSelector ? t('dashboard.detail.hideTemplateSelector') : t('dashboard.detail.changeTemplate')}
                 </button>
               </div>
               {!showTemplateSelector && selectedTemplate && (
@@ -530,10 +547,10 @@ export default function CVDetailPage({
                   </div>
                   <div>
                     <p className="font-medium text-stone-900">
-                      {getTemplateById(selectedTemplate)?.name || 'Modern'} Şablonu
+                      {t('templates.items.' + selectedTemplate + '.name')} {t('dashboard.detail.templateLabel')}
                     </p>
                     <p className="text-sm text-stone-600">
-                      {getTemplateById(selectedTemplate)?.description || 'Profesyonel tasarım'}
+                      {t('templates.items.' + selectedTemplate + '.description')}
                     </p>
                   </div>
                 </div>
@@ -544,8 +561,9 @@ export default function CVDetailPage({
                   onSelect={(templateId) => {
                     setSelectedTemplate(templateId);
                     setShowTemplateSelector(false);
-                    toast.success(`${getTemplateById(templateId)?.name} şablonu seçildi`);
+                    toast.success(t('dashboard.detail.templateSelected').replace('{name}', t('templates.items.' + templateId + '.name')));
                   }}
+                  t={t}
                 />
               )}
             </div>
@@ -553,7 +571,7 @@ export default function CVDetailPage({
               <CVForm
                 initialData={cvToFormData(cv)}
                 onSubmit={handleSubmit}
-                submitLabel="Değişiklikleri Kaydet"
+                submitLabel={t('dashboard.detail.saveChanges')}
                 templateId={selectedTemplate || ((cv.templateId as TemplateVariant) || 'modern')}
               />
             </div>
@@ -566,7 +584,7 @@ export default function CVDetailPage({
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h2 className="text-lg font-semibold text-stone-900">
-                        ATS Puanı
+                        {t('dashboard.detail.atsScore')}
                       </h2>
                       <span
                         className={`text-sm font-semibold ${
@@ -598,12 +616,12 @@ export default function CVDetailPage({
                     </div>
                     <p className="mt-2 text-sm text-stone-500">
                       {ats >= 80
-                        ? 'Mükemmel! CV\'niz ATS sistemleri için çok uyumlu.'
+                        ? t('dashboard.detail.atsExcellent')
                         : ats >= 60
-                          ? 'İyi! CV\'niz ATS sistemleri için uyumlu, ancak iyileştirme yapılabilir.'
+                          ? t('dashboard.detail.atsGood')
                           : ats >= 40
-                            ? 'Orta. CV\'niz bazı ATS sistemlerinde sorun yaşayabilir.'
-                            : 'Düşük. CV\'niz ATS sistemleri için optimize edilmeli.'}
+                            ? t('dashboard.detail.atsMedium')
+                            : t('dashboard.detail.atsLow')}
                     </p>
                   </div>
                 )}
@@ -611,7 +629,7 @@ export default function CVDetailPage({
                 {suggestions.length > 0 && (
                   <div>
                     <h2 className="text-lg font-semibold text-stone-900 mb-3">
-                      AI Önerileri
+                      {t('dashboard.detail.aiSuggestions')}
                     </h2>
                     <div className="space-y-3">
                       {suggestions.map((suggestion, idx) => {
@@ -633,7 +651,7 @@ export default function CVDetailPage({
                                       {idx + 1}
                                     </div>
                                     <h3 className="text-sm font-semibold text-amber-900">
-                                      Öneri {idx + 1}
+                                      {t('dashboard.detail.suggestionN').replace('{n}', String(idx + 1))}
                                     </h3>
                                   </div>
                                   <div className="text-amber-800 whitespace-pre-wrap text-sm">
@@ -645,7 +663,7 @@ export default function CVDetailPage({
                                         {hasMore && (
                                           <span className="text-amber-600 italic">
                                             {' '}
-                                            ... ({lines.length - 3} satır daha)
+                                            ... ({t('dashboard.detail.moreLines').replace('{count}', String(lines.length - 3))})
                                           </span>
                                         )}
                                       </>
@@ -663,7 +681,7 @@ export default function CVDetailPage({
                                   }}
                                   className="mt-3 text-sm font-medium text-amber-700 hover:text-amber-800 underline"
                                 >
-                                  {isExpanded ? 'Daha az göster' : 'Devamını göster'}
+                                  {isExpanded ? t('dashboard.detail.showLess') : t('dashboard.detail.showMore')}
                                 </button>
                               )}
                             </div>
@@ -685,7 +703,7 @@ export default function CVDetailPage({
 
             <div className="bg-white shadow rounded-lg p-6">
               <p className="text-sm text-stone-600 mb-2">
-                CV&apos;yi farklı bir dile çevir
+                {t('dashboard.detail.translateCv')}
               </p>
               <div className="flex flex-wrap gap-2">
                 {[

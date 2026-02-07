@@ -36,7 +36,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
             <div className="relative z-10">
               <p className="text-stone-400 text-sm font-medium uppercase tracking-wider mb-4">
-                AI destekli CV
+                {t('home.hero.tagline')}
               </p>
               <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-6">
                 {t('home.hero.title')}
@@ -65,7 +65,7 @@ export default function HomePage() {
                       href="/templates"
                       className="inline-flex items-center gap-2 border border-stone-600 text-white px-5 py-3 rounded font-medium hover:bg-stone-800 transition-colors"
                     >
-                      Şablonları İncele
+                      {t('home.hero.browseTemplates')}
                     </Link>
                   </>
                 )}
@@ -84,15 +84,15 @@ export default function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
             <div>
               <p className="text-2xl font-semibold text-stone-900">25+</p>
-              <p className="text-sm text-stone-500 mt-1">Profesyonel şablon</p>
+              <p className="text-sm text-stone-500 mt-1">{t('home.stats.templates')}</p>
             </div>
             <div>
               <p className="text-2xl font-semibold text-stone-900">6</p>
-              <p className="text-sm text-stone-500 mt-1">Dil desteği</p>
+              <p className="text-sm text-stone-500 mt-1">{t('home.stats.languages')}</p>
             </div>
             <div>
               <p className="text-2xl font-semibold text-stone-900">%95</p>
-              <p className="text-sm text-stone-500 mt-1">ATS uyumluluğu</p>
+              <p className="text-sm text-stone-500 mt-1">{t('home.stats.ats')}</p>
             </div>
           </div>
         </div>
@@ -111,7 +111,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((f) => (
-              <FeatureCard key={f.key} featureKey={f.key} icon={f.icon} />
+              <FeatureCard key={f.key} featureKey={f.key} icon={f.icon} locale={currentLocale} />
             ))}
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {steps.map((step) => (
-              <HowItWorksStep key={step} step={step} />
+              <HowItWorksStep key={step} step={step} locale={currentLocale} />
             ))}
           </div>
         </div>

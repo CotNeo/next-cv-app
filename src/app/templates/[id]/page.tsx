@@ -1,9 +1,16 @@
 'use client';
 
-import { use } from 'react';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import TemplatePreview from '@/components/templates/TemplatePreview';
 import { getTemplateById } from '@/data/templates';
+import { useTranslation } from '@/hooks/useTranslation';
+import { ValidLocale, defaultLocale } from '@/i18n/settings';
+
+function getCategoryLabel(category: string, t: (key: string) => string): string {
+  return t('home.templates.categories.' + category.toLowerCase());
+}
+
 export default function TemplateDetailPage({
   params,
 }: {
@@ -11,17 +18,24 @@ export default function TemplateDetailPage({
 }) {
   const { id } = use(params);
   const template = getTemplateById(id);
+  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
+  const { t } = useTranslation(currentLocale);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('locale') as ValidLocale | null;
+    if (saved) setCurrentLocale(saved);
+  }, []);
 
   if (!template) {
     return (
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center px-4">
-        <h1 className="text-xl font-bold text-stone-900 mb-2">Şablon bulunamadı</h1>
-        <p className="text-stone-500 mb-4">Geçersiz veya mevcut olmayan şablon.</p>
+        <h1 className="text-xl font-bold text-stone-900 mb-2">{t('home.templates.detail.notFound')}</h1>
+        <p className="text-stone-500 mb-4">{t('home.templates.detail.invalidTemplate')}</p>
         <Link
           href="/templates"
           className="text-teal-700 font-medium hover:text-teal-800"
         >
-          ← Şablonlara dön
+          {t('home.templates.detail.backToList')}
         </Link>
       </div>
     );
@@ -35,18 +49,28 @@ export default function TemplateDetailPage({
             href="/templates"
             className="inline-flex items-center gap-1 text-stone-400 hover:text-white text-sm font-medium mb-4"
           >
-            ← Şablonlara dön
+            {t('home.templates.detail.backToList')}
           </Link>
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold">{template.name}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{(() => {
+            const key = `home.templates.items.${template.id}.name`;
+            const v = t(key);
+            return v === key ? template.name : v;
+          })()}</h1>
             {template.popular && (
               <span className="text-xs font-medium text-amber-400 bg-amber-900/50 px-2 py-1 rounded">
-                Popüler
+                {t('home.templates.popular')}
               </span>
             )}
-            <span className="text-sm text-stone-400">{template.category}</span>
+            <span className="text-sm text-stone-400">{getCategoryLabel(template.category, t)}</span>
           </div>
-          <p className="text-stone-400 max-w-xl">{template.description}</p>
+          <p className="text-stone-400 max-w-xl">
+          {(() => {
+            const key = `home.templates.items.${template.id}.description`;
+            const v = t(key);
+            return v === key ? template.description : v;
+          })()}
+        </p>
         </div>
       </header>
 
@@ -57,15 +81,15 @@ export default function TemplateDetailPage({
           </div>
           <div className="flex-1">
             <div className="bg-white rounded-lg border border-stone-200 p-6 shadow-sm">
-              <h2 className="font-semibold text-stone-900 mb-2">Bu şablonu kullan</h2>
+              <h2 className="font-semibold text-stone-900 mb-2">{t('home.templates.detail.useThisTemplate')}</h2>
               <p className="text-sm text-stone-500 mb-4">
-                Seçtiğiniz şablonda yeni bir CV oluşturmak için aşağıdaki butona tıklayın.
+                {t('home.templates.detail.useDescription')}
               </p>
               <Link
                 href={`/dashboard/new?template=${template.id}`}
                 className="inline-flex items-center justify-center gap-2 rounded bg-teal-700 px-5 py-3 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
               >
-                Bu şablonla CV oluştur
+                {t('home.templates.detail.createWithThis')}
                 <span className="text-stone-300">→</span>
               </Link>
             </div>
@@ -74,7 +98,7 @@ export default function TemplateDetailPage({
                 href="/templates"
                 className="text-sm font-medium text-stone-500 hover:text-stone-700"
               >
-                Tüm şablonları görüntüle
+                {t('home.templates.detail.viewAllTemplates')}
               </Link>
             </div>
           </div>

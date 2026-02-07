@@ -9,6 +9,8 @@ import CVRender from '@/components/cv/CVRender';
 import type { CVFormData } from '@/components/CVForm';
 import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
 import html2pdf from 'html2pdf.js';
+import { useTranslation } from '@/hooks/useTranslation';
+import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 interface CV {
   _id: string;
@@ -183,10 +185,17 @@ export default function CVViewPage({
   const { id } = use(params);
   const router = useRouter();
   const { data: session, status } = useSession();
+  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
+  const { t } = useTranslation(currentLocale);
   const [cv, setCV] = useState<CV | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const cvRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('locale') as ValidLocale | null;
+    if (saved) setCurrentLocale(saved);
+  }, []);
 
   const fetchCV = useCallback(async () => {
     try {
@@ -221,7 +230,7 @@ export default function CVViewPage({
     if (!cvRef.current || !cv) return;
     setIsExporting(true);
     try {
-      toast.loading('PDF oluşturuluyor...', { id: 'pdf-export' });
+      toast.loading(t('dashboard.view.pdfExporting'), { id: 'pdf-export' });
       if (document.fonts?.ready) await document.fonts.ready;
       const element = cvRef.current;
       const opt = {
@@ -236,14 +245,14 @@ export default function CVViewPage({
         jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
       };
       await html2pdf().set(opt).from(element).save();
-      toast.success('PDF başarıyla indirildi', { id: 'pdf-export' });
+      toast.success(t('dashboard.view.pdfSuccess'), { id: 'pdf-export' });
     } catch (error) {
       console.error('PDF export error:', error);
-      toast.error('PDF oluşturulurken bir hata oluştu', { id: 'pdf-export' });
+      toast.error(t('dashboard.view.pdfError'), { id: 'pdf-export' });
     } finally {
       setIsExporting(false);
     }
-  }, [cv]);
+  }, [cv, t]);
 
   if (status === 'loading' || isLoading) {
     return (
@@ -257,12 +266,12 @@ export default function CVViewPage({
   if (!cv) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-stone-600">CV bulunamadı.</p>
+        <p className="text-stone-600">{t('dashboard.view.cvNotFound')}</p>
         <Link
           href="/dashboard"
           className="text-teal-700 hover:text-teal-800 font-medium"
         >
-          ← Dashboard&apos;a dön
+          {t('dashboard.view.backToDashboard')}
         </Link>
       </div>
     );
@@ -278,7 +287,7 @@ export default function CVViewPage({
                 href="/dashboard"
                 className="text-teal-700 hover:text-teal-800 text-sm font-medium"
               >
-                ← Dashboard
+                {t('dashboard.view.backToDashboard')}
               </Link>
               <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 mt-1">
                 {cv.title}
@@ -289,14 +298,14 @@ export default function CVViewPage({
                 href={`/dashboard/${id}`}
                 className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-stone-700 bg-white hover:bg-stone-50"
               >
-                Düzenle
+                {t('dashboard.view.edit')}
               </Link>
               <button
                 type="button"
                 onClick={handlePrint}
                 className="inline-flex items-center px-4 py-2 border border-stone-300 text-sm font-medium rounded text-stone-700 bg-white hover:bg-stone-50"
               >
-                Yazdır
+                {t('dashboard.view.print')}
               </button>
               <button
                 type="button"
@@ -304,7 +313,7 @@ export default function CVViewPage({
                 disabled={isExporting}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded text-white bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isExporting ? 'PDF Oluşturuluyor...' : 'PDF İndir'}
+                {isExporting ? t('dashboard.view.pdfExporting') : t('dashboard.view.pdfDownload')}
               </button>
             </div>
           </div>

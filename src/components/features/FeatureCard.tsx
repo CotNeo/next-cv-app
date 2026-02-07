@@ -1,12 +1,14 @@
 import { useTranslation } from '@/hooks/useTranslation';
+import { defaultLocale, type ValidLocale } from '@/i18n/settings';
 
 interface FeatureCardProps {
   featureKey: string;
   icon: string;
+  locale?: ValidLocale;
 }
 
-export default function FeatureCard({ featureKey, icon }: FeatureCardProps) {
-  const { t } = useTranslation();
+export default function FeatureCard({ featureKey, icon, locale = defaultLocale }: FeatureCardProps) {
+  const { t } = useTranslation(locale);
 
   return (
     <div className="bg-white border border-stone-200 rounded-lg p-6 hover:border-stone-300 transition-colors">

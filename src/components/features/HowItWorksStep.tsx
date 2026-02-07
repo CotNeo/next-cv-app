@@ -1,11 +1,13 @@
 import { useTranslation } from '@/hooks/useTranslation';
+import { defaultLocale, type ValidLocale } from '@/i18n/settings';
 
 interface HowItWorksStepProps {
   step: number;
+  locale?: ValidLocale;
 }
 
-export default function HowItWorksStep({ step }: HowItWorksStepProps) {
-  const { t } = useTranslation();
+export default function HowItWorksStep({ step, locale = defaultLocale }: HowItWorksStepProps) {
+  const { t } = useTranslation(locale);
 
   return (
     <div className="flex flex-col items-center text-center">

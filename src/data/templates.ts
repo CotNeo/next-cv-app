@@ -27,8 +27,9 @@ export const templates: TemplateMeta[] = [
   { id: 'scholar', name: 'Scholar', description: 'Ortalanmış, formal akademik stil.', category: 'Academic', popular: false },
 ];
 
+/** Category id 'all' means no filter; others match TemplateMeta.category */
 export const categories = [
-  { name: 'Tümü', count: templates.length },
+  { name: 'all', count: templates.length },
   { name: 'Professional', count: templates.filter((t) => t.category === 'Professional').length },
   { name: 'Minimalist', count: templates.filter((t) => t.category === 'Minimalist').length },
   { name: 'Technical', count: templates.filter((t) => t.category === 'Technical').length },
