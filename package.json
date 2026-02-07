@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "ci": "npm run lint && npm run build",
     "create-test-user": "tsx scripts/create-test-user.ts"
   },
   "dependencies": {
@@ -21,7 +22,7 @@
     "dotenv": "^17.2.3",
     "html2pdf.js": "^0.14.0",
     "mongoose": "^8.13.2",
-    "next": "15.3.0",
+    "next": "15.3.8",
     "next-auth": "^4.24.11",
     "next-i18next": "^15.4.2",
     "next-sitemap": "^4.2.3",
@@ -44,7 +45,7 @@
     "@types/react-dom": "^19.1.2",
     "culori": "^4.0.2",
     "eslint": "^9",
-    "eslint-config-next": "15.3.0",
+    "eslint-config-next": "15.3.8",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

@@ -51,10 +51,12 @@ Google kullanmak istemiyorsanız, auth config’de provider’ı env varken ekle
 ### 2.2 Build ve Test
 
 ```bash
+npm run ci      # Lint + build (CI ile aynı)
 npm run build
 npm run start   # Lokal prod simülasyonu
 ```
 
+- **CI:** Her push/PR’da GitHub Actions lint + build çalıştırır; yeşil olmadan merge etmeyin.
 - Build’in hatasız bittiğini ve `npm run start` ile sayfaların açıldığını doğrulayın.
 - Kritik akışlar: kayıt, giriş, CV oluşturma/düzenleme, PDF indirme, paylaşım linki.
 
@@ -70,6 +72,8 @@ npm run start   # Lokal prod simülasyonu
 4. **Environment Variables** ekleyin: `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `MONGODB_URI`, `OPENAI_API_KEY`, (ops.) `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
 5. `NEXTAUTH_URL`: Production için `https://your-app.vercel.app` (veya custom domain).
 6. Deploy; custom domain varsa Vercel’de Domain ayarlarından ekleyin.
+
+- **Test ortamı:** Repo GitHub’a bağlıysa her push ve her PR için otomatik **Preview** deployment oluşur; her commit’i canlı test URL’i ile deneyebilirsiniz. Production deploy sadece `main` (veya seçtiğiniz production branch) için yapılır.
 
 **Not:** Serverless fonksiyon timeout’ları (örn. 10 sn) AI/uzun işlemlerde yetersiz kalabilir; gerekirse Pro plan veya farklı mimari (queue + worker) düşünün.
 

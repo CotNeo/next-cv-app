@@ -1,6 +1,8 @@
 # MongoDB Setup for Test User Creation
 
-MongoDB authentication gerekiyor. Test kullanıcısı oluşturmak için aşağıdaki adımları izleyin:
+MongoDB authentication gerekiyor. Test kullanıcısı oluşturmak için aşağıdaki adımları izleyin.
+
+**Vercel / Preview ortamı:** Deploy edilen ortamda test kullanıcısı için `MONGODB_URI` ve diğer env’leri Vercel Dashboard → Project → Settings → Environment Variables üzerinden tanımlayın; script sadece yerel çalıştırma içindir.
 
 ## Seçenek 1: MongoDB Authentication ile
 

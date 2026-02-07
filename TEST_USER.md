@@ -31,6 +31,7 @@ curl -X POST http://localhost:3000/api/auth/register \
 
 ## Notlar
 
-- MongoDB'nin çalıştığından emin olun
-- Eğer kullanıcı zaten varsa, script hata vermeden mevcut bilgileri gösterecektir
-- Test kullanıcısı 10 CV limiti ile oluşturulur (normal kullanıcılar 1 CV ile başlar)
+- MongoDB'nin çalıştığından emin olun.
+- Eğer kullanıcı zaten varsa, script hata vermeden mevcut bilgileri gösterecektir.
+- Test kullanıcısı 10 CV limiti ile oluşturulur (normal kullanıcılar 1 CV ile başlar).
+- Vercel/Preview’da test için env’ler Dashboard’da tanımlı olmalı; yerel script deploy ortamında çalışmaz, Yöntem 2 veya 3 kullanın.

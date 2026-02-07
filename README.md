@@ -103,6 +103,11 @@ npm run dev
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+## ✅ CI & test ortamı
+
+- **Her push/PR:** GitHub Actions `main` için lint + build çalıştırır (`npm run ci`). Commit’i push etmeden önce yerel kontrol için: `npm run ci`.
+- **Canlı test:** Repo Vercel’e bağlıysa her push’ta otomatik **Preview** deployment oluşur; PR’larda ve branch’lerdeki her commit için ayrı test URL’i alırsın. Vercel Dashboard → Project → Settings → Git ile GitHub bağlantısını kontrol et.
+
 ## 🎨 Tech Stack
 
 - **Framework**: Next.js 15 (App Router)
@@ -261,6 +266,7 @@ npm run dev          # Start development server
 npm run build        # Build for production
 npm run start        # Start production server
 npm run lint         # Run ESLint
+npm run ci           # Lint + build (CI / pre-push check)
 npm run create-test-user  # Create test user (requires MongoDB)
 ```
 
@@ -280,6 +286,14 @@ See `TEST_USER.md` for test user credentials.
 ### MongoDB Setup
 
 For Docker MongoDB setup, see `MONGODB_SETUP.md`.
+
+### Dokümantasyon
+
+| Dosya | İçerik |
+|-------|--------|
+| [docs/PRODUCTION_ROADMAP.md](docs/PRODUCTION_ROADMAP.md) | Production deploy ve Vercel yol haritası |
+| [MONGODB_SETUP.md](MONGODB_SETUP.md) | MongoDB kurulumu ve test kullanıcısı script’i |
+| [TEST_USER.md](TEST_USER.md) | Test kullanıcı bilgileri ve oluşturma yöntemleri |
 
 ## 📄 License
 
