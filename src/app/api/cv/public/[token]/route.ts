@@ -1,25 +1,19 @@
 import { NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api';
+import { clientIp, enforceRateLimit } from '@/lib/rate-limit';
 import { getCVByShareToken } from '@/services/cvService';
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ token: string }> }
-) {
+type RouteContext = { params: Promise<{ token: string }> };
+
+export async function GET(request: Request, { params }: RouteContext) {
   try {
+    // Unauthenticated endpoint, so the IP is the only identity available.
+    enforceRateLimit('publicRead', clientIp(request));
+
     const { token } = await params;
     const cv = await getCVByShareToken(token);
     return NextResponse.json(cv);
   } catch (error) {
-    if ((error as Error).message === 'CV not found or not public') {
-      return NextResponse.json(
-        { error: 'CV not found or not public' },
-        { status: 404 }
-      );
-    }
-    console.error('Get public CV error:', error);
-    return NextResponse.json(
-      { error: 'Failed to get public CV' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GET /api/cv/public/[token]');
   }
 }

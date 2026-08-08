@@ -1,7 +1,5 @@
 import mongoose from 'mongoose';
-
-const MONGODB_URI =
-  process.env.MONGODB_URI || 'mongodb://localhost:27017/cv-builder';
+import { getEnv } from '@/lib/env';
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -9,28 +7,44 @@ interface MongooseCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
-  var mongoose: MongooseCache | undefined;
+  var mongooseCache: MongooseCache | undefined;
 }
 
-const cached = global.mongoose ?? { conn: null, promise: null };
-if (!global.mongoose) global.mongoose = cached;
+/**
+ * Reused across hot reloads and serverless invocations so a single process
+ * never opens more than one connection pool.
+ */
+const cached: MongooseCache = global.mongooseCache ?? { conn: null, promise: null };
+if (!global.mongooseCache) global.mongooseCache = cached;
 
 export async function connectToDatabase(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+    cached.promise = mongoose.connect(getEnv().MONGODB_URI, {
+      // Serverless functions should fail fast rather than hold a request open
+      // while the driver retries a server it cannot reach.
       bufferCommands: false,
-      authSource: 'admin',
+      serverSelectionTimeoutMS: 10_000,
+      socketTimeoutMS: 45_000,
+      maxPoolSize: 10,
     });
   }
 
   try {
     cached.conn = await cached.promise;
     return cached.conn;
-  } catch (e) {
+  } catch (error) {
+    // Clear the rejected promise so the next request retries instead of
+    // replaying the same failure forever.
     cached.promise = null;
-    throw e;
+    throw error;
   }
-} 
+}
+
+export async function disconnectFromDatabase(): Promise<void> {
+  if (!cached.conn) return;
+  await cached.conn.disconnect();
+  cached.conn = null;
+  cached.promise = null;
+}

@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 const teamMembers = [
   { name: 'Furkan Akar', handle: 'CotNeo', github: 'https://github.com/CotNeo', linkedin: 'https://www.linkedin.com/in/furkanaliakar/', website: 'https://www.cotneo.com', websiteLabel: 'cotneo.com' },
@@ -19,13 +17,8 @@ const stats = [
 const valueKeys = ['innovation', 'userFocus', 'quality'] as const;
 
 export default function AboutPage() {
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   return (
     <div className="min-h-screen bg-stone-50">

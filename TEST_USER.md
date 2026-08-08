@@ -1,37 +1,41 @@
-# Test Kullanıcısı Bilgileri
+# Test account
 
-Test için kullanabileceğiniz kullanıcı bilgileri:
+For local development only. Do not create this account in production.
 
-## Kullanıcı Bilgileri
+| Field | Value |
+|-------|-------|
+| Email | `test@example.com` |
+| Password | `test123456` |
+| Name | `Test User` |
+| CV limit | 10 (new accounts get `FREE_CV_LIMIT`, default 3) |
 
-- **Email:** `test@example.com`
-- **Şifre:** `test123456`
-- **İsim:** `Test User`
+## Creating it
 
-## Kullanıcı Oluşturma
-
-### Yöntem 1: Script ile (MongoDB çalışıyorsa)
+### Script (local)
 
 ```bash
 npm run create-test-user
 ```
 
-### Yöntem 2: Register API ile (Server çalışıyorsa)
+Reads `.env.local`, connects to `MONGODB_URI` and creates the account if it does not already exist. Re-running it is safe.
+
+### Register endpoint
+
+Works against any running instance, including a preview deployment:
 
 ```bash
 curl -X POST http://localhost:3000/api/auth/register \
-  -H "Content-Type: application/json" \
+  -H 'Content-Type: application/json' \
   -d '{"name":"Test User","email":"test@example.com","password":"test123456"}'
 ```
 
-### Yöntem 3: Web Arayüzü ile
+Passwords must be at least 8 characters and contain both a letter and a digit. Registration is rate limited to 10 requests per hour per IP.
 
-1. http://localhost:3000/auth/register adresine gidin
-2. Yukarıdaki bilgileri kullanarak kayıt olun
+### Web UI
 
-## Notlar
+Go to http://localhost:3000/auth/register and sign up.
 
-- MongoDB'nin çalıştığından emin olun.
-- Eğer kullanıcı zaten varsa, script hata vermeden mevcut bilgileri gösterecektir.
-- Test kullanıcısı 10 CV limiti ile oluşturulur (normal kullanıcılar 1 CV ile başlar).
-- Vercel/Preview’da test için env’ler Dashboard’da tanımlı olmalı; yerel script deploy ortamında çalışmaz, Yöntem 2 veya 3 kullanın.
+## Notes
+
+- MongoDB must be reachable — see [MONGODB_SETUP.md](MONGODB_SETUP.md).
+- The script runs locally only. For a deployed environment use the register endpoint or the UI; environment variables live in your host's dashboard.

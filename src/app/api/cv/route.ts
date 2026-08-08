@@ -1,50 +1,30 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { connectToDatabase } from '@/lib/mongodb';
-import CV from '@/models/CV';
+import { handleApiError, readJson, requireUserId } from '@/lib/api';
+import { enforceRateLimit } from '@/lib/rate-limit';
+import { cvCreateSchema } from '@/lib/validation';
+import { createCV, getQuota, listUserCVs } from '@/services/cvService';
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    await connectToDatabase();
-    const cvs = await CV.find({ userId: session.user.id }).sort({ createdAt: -1 });
+    const userId = await requireUserId();
+    const cvs = await listUserCVs(userId);
     return NextResponse.json(cvs);
   } catch (error) {
-    console.error('CV listeleme hatası:', error);
-    return NextResponse.json(
-      { error: 'CV\'ler listelenirken bir hata oluştu' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GET /api/cv');
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = await requireUserId();
+    enforceRateLimit('write', userId);
 
-    const data = await request.json();
-    await connectToDatabase();
+    const data = cvCreateSchema.parse(await readJson(request));
+    const cv = await createCV(userId, data);
 
-    const cv = new CV({
-      ...data,
-      userId: session.user.id,
-    });
-
-    await cv.save();
-    return NextResponse.json(cv);
+    const quota = await getQuota(userId);
+    return NextResponse.json({ ...cv.toObject(), quota }, { status: 201 });
   } catch (error) {
-    console.error('CV oluşturma hatası:', error);
-    return NextResponse.json(
-      { error: 'CV oluşturulurken bir hata oluştu' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'POST /api/cv');
   }
-} 
+}

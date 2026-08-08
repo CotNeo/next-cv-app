@@ -1,42 +1,82 @@
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
+/** Canonical template list. Keep this file free of client-only imports. */
+export const TEMPLATE_IDS = [
+  'modern',
+  'classic',
+  'professional',
+  'executive',
+  'elegant',
+  'corporate',
+  'minimal',
+  'clean',
+  'technical',
+  'developer',
+  'creative',
+  'artistic',
+  'portfolio',
+  'innovative',
+  'academic',
+  'scholar',
+] as const;
+
+export type TemplateVariant = (typeof TEMPLATE_IDS)[number];
+
+export const DEFAULT_TEMPLATE: TemplateVariant = 'modern';
+
+export const TEMPLATE_CATEGORIES = [
+  'Professional',
+  'Minimalist',
+  'Technical',
+  'Creative',
+  'Academic',
+] as const;
+
+export type TemplateCategory = (typeof TEMPLATE_CATEGORIES)[number];
 
 export interface TemplateMeta {
   id: TemplateVariant;
+  /** i18n key suffix under `templates.items.*`; falls back to the English name. */
   name: string;
-  description: string;
-  category: string;
+  category: TemplateCategory;
   popular: boolean;
 }
 
 export const templates: TemplateMeta[] = [
-  { id: 'modern', name: 'Modern', description: 'Sade, iki sütunlu profesyonel tasarım.', category: 'Professional', popular: true },
-  { id: 'classic', name: 'Classic', description: 'Sol aksan şeridi, klasik düzen.', category: 'Professional', popular: true },
-  { id: 'professional', name: 'Professional', description: 'Bölüm başlıklı, kurumsal görünüm.', category: 'Professional', popular: true },
-  { id: 'executive', name: 'Executive', description: 'Üst koyu şerit, üst düzey pozisyonlar için.', category: 'Professional', popular: false },
-  { id: 'elegant', name: 'Elegant', description: 'İnce çizgiler, sofistike görünüm.', category: 'Professional', popular: false },
-  { id: 'corporate', name: 'Corporate', description: 'Grid yapı, resmi kurumsal stil.', category: 'Professional', popular: false },
-  { id: 'minimal', name: 'Minimal', description: 'Az öğe, çok beyaz alan.', category: 'Minimalist', popular: true },
-  { id: 'clean', name: 'Clean', description: 'Ultra sade, tek sütun, net odak.', category: 'Minimalist', popular: false },
-  { id: 'technical', name: 'Technical', description: 'Yapılandırılmış, teknik profiller için.', category: 'Technical', popular: true },
-  { id: 'developer', name: 'Developer', description: 'Koyu header, etiketler; yazılımcılar için.', category: 'Technical', popular: true },
-  { id: 'creative', name: 'Creative', description: 'Asimetrik, yaratıcı alanlar için.', category: 'Creative', popular: true },
-  { id: 'artistic', name: 'Artistic', description: 'Cesur aksan blokları, tasarım odaklı.', category: 'Creative', popular: false },
-  { id: 'portfolio', name: 'Portfolio', description: 'Görsel alan + metin; portföy vurgusu.', category: 'Creative', popular: false },
-  { id: 'innovative', name: 'Innovative', description: 'Asimetrik düzen, fark yaratan görünüm.', category: 'Creative', popular: false },
-  { id: 'academic', name: 'Academic', description: 'Çok bölüm, akademik ve araştırma için.', category: 'Academic', popular: false },
-  { id: 'scholar', name: 'Scholar', description: 'Ortalanmış, formal akademik stil.', category: 'Academic', popular: false },
+  { id: 'modern', name: 'Modern', category: 'Professional', popular: true },
+  { id: 'classic', name: 'Classic', category: 'Professional', popular: true },
+  { id: 'professional', name: 'Professional', category: 'Professional', popular: true },
+  { id: 'executive', name: 'Executive', category: 'Professional', popular: false },
+  { id: 'elegant', name: 'Elegant', category: 'Professional', popular: false },
+  { id: 'corporate', name: 'Corporate', category: 'Professional', popular: false },
+  { id: 'minimal', name: 'Minimal', category: 'Minimalist', popular: true },
+  { id: 'clean', name: 'Clean', category: 'Minimalist', popular: false },
+  { id: 'technical', name: 'Technical', category: 'Technical', popular: true },
+  { id: 'developer', name: 'Developer', category: 'Technical', popular: true },
+  { id: 'creative', name: 'Creative', category: 'Creative', popular: true },
+  { id: 'artistic', name: 'Artistic', category: 'Creative', popular: false },
+  { id: 'portfolio', name: 'Portfolio', category: 'Creative', popular: false },
+  { id: 'innovative', name: 'Innovative', category: 'Creative', popular: false },
+  { id: 'academic', name: 'Academic', category: 'Academic', popular: false },
+  { id: 'scholar', name: 'Scholar', category: 'Academic', popular: false },
 ];
 
 /** Category id 'all' means no filter; others match TemplateMeta.category */
 export const categories = [
   { name: 'all', count: templates.length },
-  { name: 'Professional', count: templates.filter((t) => t.category === 'Professional').length },
-  { name: 'Minimalist', count: templates.filter((t) => t.category === 'Minimalist').length },
-  { name: 'Technical', count: templates.filter((t) => t.category === 'Technical').length },
-  { name: 'Creative', count: templates.filter((t) => t.category === 'Creative').length },
-  { name: 'Academic', count: templates.filter((t) => t.category === 'Academic').length },
+  ...TEMPLATE_CATEGORIES.map((category) => ({
+    name: category,
+    count: templates.filter((t) => t.category === category).length,
+  })),
 ];
 
 export function getTemplateById(id: string): TemplateMeta | undefined {
   return templates.find((t) => t.id === id);
+}
+
+export function isTemplateId(id: unknown): id is TemplateVariant {
+  return typeof id === 'string' && (TEMPLATE_IDS as readonly string[]).includes(id);
+}
+
+/** Narrows arbitrary stored values to a renderable template id. */
+export function toTemplateId(id: unknown): TemplateVariant {
+  return isTemplateId(id) ? id : DEFAULT_TEMPLATE;
 }

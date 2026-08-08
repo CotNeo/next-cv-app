@@ -1,25 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +26,13 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || t('auth.register.errorRegisterFailed'));
+        const data = await res.json().catch(() => null);
+        const byCode: Record<string, string> = {
+          email_taken: t('auth.register.errorEmailTaken'),
+          validation_failed: t('auth.register.errorWeakPassword'),
+          rate_limited: t('auth.register.errorTooMany'),
+        };
+        throw new Error(byCode[data?.code] ?? t('auth.register.errorRegisterFailed'));
       }
       router.push('/auth/login?registered=true');
     } catch (err) {

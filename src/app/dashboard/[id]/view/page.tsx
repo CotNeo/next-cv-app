@@ -7,10 +7,9 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import CVRender from '@/components/cv/CVRender';
 import type { CVFormData } from '@/components/CVForm';
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
-import html2pdf from 'html2pdf.js';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
+import { toLocale, type ValidLocale } from '@/i18n/settings';
+import { toTemplateId } from '@/data/templates';
 
 interface CV {
   _id: string;
@@ -66,6 +65,7 @@ interface CV {
     phone?: string;
   }>;
   templateId?: string;
+  language?: ValidLocale;
   createdAt: string;
 }
 
@@ -85,6 +85,7 @@ function cvToFormData(cv: CV): CVFormData {
   const refs = cv.references ?? [];
   return {
     title: cv.title ?? '',
+    language: cv.language,
     personalInfo: {
       name: cv.personalInfo?.name ?? '',
       email: cv.personalInfo?.email ?? '',
@@ -185,17 +186,12 @@ export default function CVViewPage({
   const { id } = use(params);
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t, locale } = useTranslation();
   const [cv, setCV] = useState<CV | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const cvRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   const fetchCV = useCallback(async () => {
     try {
@@ -231,6 +227,9 @@ export default function CVViewPage({
     setIsExporting(true);
     try {
       toast.loading(t('dashboard.view.pdfExporting'), { id: 'pdf-export' });
+      // ~260 kB of canvas/PDF code: load it on demand rather than shipping it
+      // in the initial bundle for everyone who only wants to look at their CV.
+      const { default: html2pdf } = await import('html2pdf.js');
       if (document.fonts?.ready) await document.fonts.ready;
       const element = cvRef.current;
       const opt = {
@@ -321,7 +320,8 @@ export default function CVViewPage({
           <div ref={cvRef} className="bg-white shadow-lg rounded-lg overflow-hidden print:shadow-none print:rounded-none">
             <CVRender
               data={cvToFormData(cv)}
-              templateId={(cv.templateId as TemplateVariant) || 'modern'}
+              templateId={toTemplateId(cv.templateId)}
+              locale={toLocale(cv.language ?? locale)}
             />
           </div>
         </div>

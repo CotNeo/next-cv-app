@@ -7,7 +7,12 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
+
+interface Quota {
+  used: number;
+  limit: number;
+  remaining: number;
+}
 
 interface CV {
   _id: string;
@@ -19,9 +24,9 @@ interface CV {
 export default function DashboardPage() {
   const { status } = useSession();
   const router = useRouter();
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t, locale } = useTranslation();
   const [cvs, setCVs] = useState<CV[]>([]);
+  const [quota, setQuota] = useState<Quota | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; cvId: string | null; cvTitle: string }>({
     isOpen: false,
@@ -29,17 +34,13 @@ export default function DashboardPage() {
     cvTitle: '',
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   const fetchCVs = useCallback(async () => {
     try {
-      const res = await fetch('/api/cv');
-      if (!res.ok) throw new Error('Failed to load CVs');
-      const data = await res.json();
-      setCVs(data);
+      const [cvsRes, quotaRes] = await Promise.all([fetch('/api/cv'), fetch('/api/quota')]);
+      if (!cvsRes.ok) throw new Error('Failed to load CVs');
+      setCVs(await cvsRes.json());
+      if (quotaRes.ok) setQuota(await quotaRes.json());
     } catch (e) {
       console.error('CV load error:', e);
       toast.error(t('dashboard.list.loadError'));
@@ -87,13 +88,29 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-stone-50 py-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
-          <h1 className="text-2xl font-bold text-stone-900">{t('dashboard.list.title')}</h1>
-          <Link
-            href="/dashboard/new"
-            className="inline-flex items-center justify-center rounded bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
-          >
-            {t('dashboard.list.newCv')}
-          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-stone-900">{t('dashboard.list.title')}</h1>
+            {quota && (
+              <p className="mt-1 text-sm text-stone-500">
+                {t('errors.quotaMessage', { used: quota.used, limit: quota.limit })}
+              </p>
+            )}
+          </div>
+          {quota && quota.remaining <= 0 ? (
+            <Link
+              href="/pricing"
+              className="inline-flex items-center justify-center rounded border border-stone-300 bg-white px-4 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50"
+            >
+              {t('errors.quotaUpgrade')}
+            </Link>
+          ) : (
+            <Link
+              href="/dashboard/new"
+              className="inline-flex items-center justify-center rounded bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 transition-colors"
+            >
+              {t('dashboard.list.newCv')}
+            </Link>
+          )}
         </div>
         {cvs.length === 0 ? (
           <div className="rounded-lg border border-stone-200 bg-white py-16 text-center">
@@ -110,7 +127,7 @@ export default function DashboardPage() {
                 <div className="p-5">
                   <h2 className="text-lg font-semibold text-stone-900">{cv.title}</h2>
                   <p className="mt-1 text-sm text-stone-500">
-                    {new Date(cv.createdAt).toLocaleDateString(currentLocale === 'en' ? 'en-US' : currentLocale)}
+                    {new Date(cv.createdAt).toLocaleDateString(locale === 'en' ? 'en-US' : locale)}
                   </p>
                 </div>
                 <div className="flex items-center justify-between px-5 py-4 border-t border-stone-100 bg-stone-50/50">

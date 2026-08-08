@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
+import { useTranslation } from '@/hooks/useTranslation';
+import { DEFAULT_TEMPLATE, type TemplateVariant } from '@/data/templates';
+import { languageNames, locales, type ValidLocale } from '@/i18n/settings';
 
 export interface CVFormData {
   title: string;
@@ -63,6 +65,8 @@ export interface CVFormData {
     email: string;
     phone: string;
   }[];
+  /** Language the finished CV is written in; drives the rendered headings. */
+  language?: ValidLocale;
 }
 
 const emptyFormData: CVFormData = {
@@ -114,10 +118,11 @@ type CVFormProps = {
 export default function CVForm({
   initialData,
   onSubmit,
-  submitLabel = 'CV Oluştur',
+  submitLabel,
   templateId,
 }: CVFormProps) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const [formData, setFormData] = useState<CVFormData>(emptyFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -139,13 +144,13 @@ export default function CVForm({
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
-      toast.error('Lütfen bir resim dosyası seçin');
+      toast.error(t('form.toast.imageOnly'));
       return;
     }
 
     // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
-      toast.error('Resim boyutu 2MB\'dan küçük olmalıdır');
+      toast.error(t('form.toast.imageTooLarge'));
       return;
     }
 
@@ -156,10 +161,10 @@ export default function CVForm({
         ...formData,
         personalInfo: { ...formData.personalInfo, profilePhoto: result },
       });
-      toast.success('Profil resmi yüklendi');
+      toast.success(t('form.toast.photoUploaded'));
     };
     reader.onerror = () => {
-      toast.error('Resim yüklenirken bir hata oluştu');
+      toast.error(t('form.toast.photoError'));
     };
     reader.readAsDataURL(file);
   };
@@ -176,17 +181,30 @@ export default function CVForm({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...formData,
-            templateId: templateId || 'modern',
+            language: formData.language ?? locale,
+            templateId: templateId ?? DEFAULT_TEMPLATE,
           }),
         });
-        if (!response.ok) throw new Error('CV oluşturulamadı');
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          // Quota and validation failures are the user's to act on, so they get
+          // their own message rather than the generic "something went wrong".
+          if (body?.code === 'quota_exceeded') {
+            toast.error(t('form.toast.quotaExceeded'));
+          } else if (body?.code === 'validation_failed') {
+            toast.error(t('form.toast.validationError'));
+          } else {
+            toast.error(t('form.toast.createError'));
+          }
+          return;
+        }
         const data = await response.json();
-        toast.success('CV başarıyla oluşturuldu');
+        toast.success(t('form.toast.created'));
         router.push(`/dashboard/${data._id}`);
       }
     } catch (error) {
       console.error('CV submit error:', error);
-      toast.error('CV oluşturulurken bir hata oluştu');
+      toast.error(t('form.toast.createError'));
     } finally {
       setIsSubmitting(false);
     }
@@ -354,12 +372,12 @@ export default function CVForm({
   const renderPersonalInfo = () => (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold text-stone-900 mb-4">Kişisel Bilgiler</h3>
+        <h3 className="text-lg font-semibold text-stone-900 mb-4">{t('form.personal.title')}</h3>
         
         {/* Profil Resmi */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-stone-700 mb-2">
-            Profil Resmi
+            {t('form.personal.photo')}
           </label>
           <div className="flex items-center gap-4">
             {formData.personalInfo.profilePhoto ? (
@@ -388,7 +406,7 @@ export default function CVForm({
               </div>
             ) : (
               <div className="w-24 h-24 rounded-full bg-stone-200 flex items-center justify-center border-2 border-dashed border-stone-300">
-                <span className="text-stone-400 text-xs text-center px-2">Resim Yok</span>
+                <span className="text-stone-400 text-xs text-center px-2">{t('form.personal.noPhoto')}</span>
               </div>
             )}
             <div>
@@ -404,9 +422,9 @@ export default function CVForm({
                 htmlFor="profilePhoto"
                 className="inline-flex items-center px-4 py-2 border border-stone-300 rounded-md text-sm font-medium text-stone-700 bg-white hover:bg-stone-50 cursor-pointer"
               >
-                Resim Seç
+                {t('form.personal.choosePhoto')}
               </label>
-              <p className="mt-1 text-xs text-stone-500">JPG, PNG (Max 2MB, 400x400 önerilir)</p>
+              <p className="mt-1 text-xs text-stone-500">{t('form.personal.photoHint')}</p>
             </div>
           </div>
         </div>
@@ -414,7 +432,7 @@ export default function CVForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-stone-700">
-              CV Başlığı <span className="text-red-500">*</span>
+              {t('form.personal.cvTitle')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -422,13 +440,33 @@ export default function CVForm({
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-              placeholder="Örn: Yazılım Geliştirici CV"
+              placeholder={t('form.personal.cvTitlePlaceholder')}
               required
             />
           </div>
           <div>
+            <label htmlFor="cvLanguage" className="block text-sm font-medium text-stone-700">
+              {t('form.personal.cvLanguage')}
+            </label>
+            <select
+              id="cvLanguage"
+              value={formData.language ?? locale}
+              onChange={(e) =>
+                setFormData({ ...formData, language: e.target.value as ValidLocale })
+              }
+              className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
+            >
+              {locales.map((code) => (
+                <option key={code} value={code}>
+                  {languageNames[code]}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-stone-500">{t('form.personal.cvLanguageHint')}</p>
+          </div>
+          <div>
             <label htmlFor="name" className="block text-sm font-medium text-stone-700">
-              Ad Soyad <span className="text-red-500">*</span>
+              {t('form.personal.fullName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -446,7 +484,7 @@ export default function CVForm({
           </div>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-stone-700">
-              E-posta <span className="text-red-500">*</span>
+              {t('form.personal.email')} <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
@@ -464,7 +502,7 @@ export default function CVForm({
           </div>
           <div>
             <label htmlFor="phone" className="block text-sm font-medium text-stone-700">
-              Telefon <span className="text-red-500">*</span>
+              {t('form.personal.phone')} <span className="text-red-500">*</span>
             </label>
             <input
               type="tel"
@@ -477,13 +515,13 @@ export default function CVForm({
                 })
               }
               className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-              placeholder="+90 555 123 45 67"
+              placeholder={t('form.personal.phonePlaceholder')}
               required
             />
           </div>
           <div>
             <label htmlFor="location" className="block text-sm font-medium text-stone-700">
-              Konum <span className="text-red-500">*</span>
+              {t('form.personal.location')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -496,7 +534,7 @@ export default function CVForm({
                 })
               }
               className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-              placeholder="İstanbul, Türkiye"
+              placeholder={t('form.personal.locationPlaceholder')}
               required
             />
           </div>
@@ -515,12 +553,12 @@ export default function CVForm({
                 })
               }
               className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-              placeholder="https://linkedin.com/in/username"
+              placeholder={t('form.personal.linkedinPlaceholder')}
             />
           </div>
           <div className="sm:col-span-2">
             <label htmlFor="website" className="block text-sm font-medium text-stone-700">
-              Kişisel Web Sitesi / Portfolio
+              {t('form.personal.website')}
             </label>
             <input
               type="url"
@@ -533,13 +571,13 @@ export default function CVForm({
                 })
               }
               className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-              placeholder="https://yourwebsite.com"
+              placeholder={t('form.personal.websitePlaceholder')}
             />
           </div>
         </div>
         <div>
           <label htmlFor="summary" className="block text-sm font-medium text-stone-700 mt-4">
-            Profesyonel Özet <span className="text-red-500">*</span>
+            {t('form.personal.summary')} <span className="text-red-500">*</span>
           </label>
           <textarea
             id="summary"
@@ -547,10 +585,10 @@ export default function CVForm({
             value={formData.summary}
             onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
             className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-            placeholder="Kendiniz hakkında kısa bir özet yazın..."
+            placeholder={t('form.personal.summaryPlaceholder')}
             required
           />
-          <p className="mt-1 text-xs text-stone-500">2-3 paragraf önerilir</p>
+          <p className="mt-1 text-xs text-stone-500">{t('form.personal.summaryHint')}</p>
         </div>
       </div>
     </div>
@@ -559,13 +597,13 @@ export default function CVForm({
   const renderWorkExperience = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-stone-900">İş Deneyimi</h3>
+        <h3 className="text-lg font-semibold text-stone-900">{t('form.experience.title')}</h3>
         <button
           type="button"
           onClick={addWorkExperience}
           className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
         >
-          + Deneyim Ekle
+          {t('form.experience.add')}
         </button>
       </div>
       {formData.workExperience.map((exp, index) => (
@@ -578,14 +616,14 @@ export default function CVForm({
                 onClick={() => removeWorkExperience(index)}
                 className="text-sm text-red-600 hover:text-red-700"
               >
-                Kaldır
+                {t('form.common.remove')}
               </button>
             </div>
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor={`company-${index}`} className="block text-sm font-medium text-stone-700">
-                Şirket <span className="text-red-500">*</span>
+                {t('form.common.company')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -602,7 +640,7 @@ export default function CVForm({
             </div>
             <div>
               <label htmlFor={`position-${index}`} className="block text-sm font-medium text-stone-700">
-                Pozisyon <span className="text-red-500">*</span>
+                {t('form.common.position')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -621,7 +659,7 @@ export default function CVForm({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor={`startDate-${index}`} className="block text-sm font-medium text-stone-700">
-                Başlangıç Tarihi <span className="text-red-500">*</span>
+                {t('form.experience.startDate')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="month"
@@ -653,12 +691,12 @@ export default function CVForm({
                   className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-stone-300 rounded"
                 />
                 <label htmlFor={`isCurrent-${index}`} className="text-sm font-medium text-stone-700">
-                  Halen devam ediyorum
+                  {t('form.experience.current')}
                 </label>
               </div>
               {!exp.isCurrent && (
                 <label htmlFor={`endDate-${index}`} className="block text-sm font-medium text-stone-700">
-                  Bitiş Tarihi <span className="text-red-500">*</span>
+                  {t('form.experience.endDate')} <span className="text-red-500">*</span>
                 </label>
               )}
               {!exp.isCurrent && (
@@ -679,7 +717,7 @@ export default function CVForm({
           </div>
           <div>
             <label htmlFor={`description-${index}`} className="block text-sm font-medium text-stone-700">
-              İş Tanımı ve Sorumluluklar <span className="text-red-500">*</span>
+              {t('form.experience.description')} <span className="text-red-500">*</span>
             </label>
             <textarea
               id={`description-${index}`}
@@ -691,7 +729,7 @@ export default function CVForm({
                 setFormData({ ...formData, workExperience: newExp });
               }}
               className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-              placeholder="Görevlerinizi ve başarılarınızı listeleyin..."
+              placeholder={t('form.experience.descriptionPlaceholder')}
               required
             />
           </div>
@@ -703,33 +741,33 @@ export default function CVForm({
   const renderEducation = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-stone-900">Eğitim</h3>
+        <h3 className="text-lg font-semibold text-stone-900">{t('form.education.title')}</h3>
         <button
           type="button"
           onClick={addEducation}
           className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
         >
-          + Eğitim Ekle
+          {t('form.education.add')}
         </button>
       </div>
       {formData.education.map((edu, index) => (
         <div key={index} className="space-y-4 p-5 border border-stone-200 rounded-lg bg-stone-50">
           {formData.education.length > 1 && (
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-stone-600">Eğitim #{index + 1}</span>
+              <span className="text-sm font-medium text-stone-600">{t('form.education.title')} #{index + 1}</span>
               <button
                 type="button"
                 onClick={() => removeEducation(index)}
                 className="text-sm text-red-600 hover:text-red-700"
               >
-                Kaldır
+                {t('form.common.remove')}
               </button>
             </div>
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor={`institution-${index}`} className="block text-sm font-medium text-stone-700">
-                Kurum/Üniversite <span className="text-red-500">*</span>
+                {t('form.education.institution')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -746,7 +784,7 @@ export default function CVForm({
             </div>
             <div>
               <label htmlFor={`degree-${index}`} className="block text-sm font-medium text-stone-700">
-                Derece <span className="text-red-500">*</span>
+                {t('form.education.degree')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -758,13 +796,13 @@ export default function CVForm({
                   setFormData({ ...formData, education: newEdu });
                 }}
                 className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-                placeholder="Örn: Lisans, Yüksek Lisans"
+                placeholder={t('form.education.degreePlaceholder')}
                 required
               />
             </div>
             <div>
               <label htmlFor={`field-${index}`} className="block text-sm font-medium text-stone-700">
-                Bölüm/Alan <span className="text-red-500">*</span>
+                {t('form.education.field')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -776,7 +814,7 @@ export default function CVForm({
                   setFormData({ ...formData, education: newEdu });
                 }}
                 className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-                placeholder="Örn: Bilgisayar Mühendisliği"
+                placeholder={t('form.education.fieldPlaceholder')}
                 required
               />
             </div>
@@ -797,13 +835,13 @@ export default function CVForm({
                   className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-stone-300 rounded"
                 />
                 <label htmlFor={`eduIsCurrent-${index}`} className="text-sm font-medium text-stone-700">
-                  Halen devam ediyorum
+                  {t('form.experience.current')}
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor={`eduStartDate-${index}`} className="block text-sm font-medium text-stone-700">
-                    Başlangıç <span className="text-red-500">*</span>
+                    {t('form.education.start')} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="month"
@@ -821,7 +859,7 @@ export default function CVForm({
                 {!edu.isCurrent && (
                   <div>
                     <label htmlFor={`eduEndDate-${index}`} className="block text-sm font-medium text-stone-700">
-                      Bitiş <span className="text-red-500">*</span>
+                      {t('form.education.end')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="month"
@@ -849,13 +887,13 @@ export default function CVForm({
     <div className="space-y-6">
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-stone-900">Yetenekler</h3>
+          <h3 className="text-lg font-semibold text-stone-900">{t('form.skills.title')}</h3>
           <button
             type="button"
             onClick={addSkill}
             className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
-            + Yetenek Ekle
+            {t('form.skills.add')}
           </button>
         </div>
         <div className="space-y-2">
@@ -870,7 +908,7 @@ export default function CVForm({
                   setFormData({ ...formData, skills: newSkills });
                 }}
                 className="flex-1 rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-                placeholder="Örn: JavaScript, Python, React"
+                placeholder={t('form.skills.placeholder')}
                 required
               />
               {formData.skills.length > 1 && (
@@ -889,13 +927,13 @@ export default function CVForm({
 
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-stone-900">Diller</h3>
+          <h3 className="text-lg font-semibold text-stone-900">{t('form.languages.title')}</h3>
           <button
             type="button"
             onClick={addLanguage}
             className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
-            + Dil Ekle
+            {t('form.languages.add')}
           </button>
         </div>
         {formData.languages.map((lang, index) => (
@@ -910,7 +948,7 @@ export default function CVForm({
                   setFormData({ ...formData, languages: newLangs });
                 }}
                 className="flex-1 rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-                placeholder="Dil"
+                placeholder={t('form.languages.placeholder')}
                 required
               />
               {formData.languages.length > 1 && (
@@ -934,13 +972,13 @@ export default function CVForm({
                 className="w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
                 required
               >
-                <option value="">Seviye Seçin</option>
-                <option value="A1">A1 - Başlangıç</option>
-                <option value="A2">A2 - Temel</option>
-                <option value="B1">B1 - Orta</option>
-                <option value="B2">B2 - Orta Üstü</option>
-                <option value="C1">C1 - İleri</option>
-                <option value="C2">C2 - Ana Dil</option>
+                <option value="">{t('form.languages.selectLevel')}</option>
+                <option value="A1">{t('form.languages.a1')}</option>
+                <option value="A2">{t('form.languages.a2')}</option>
+                <option value="B1">{t('form.languages.b1')}</option>
+                <option value="B2">{t('form.languages.b2')}</option>
+                <option value="C1">{t('form.languages.c1')}</option>
+                <option value="C2">{t('form.languages.c2')}</option>
               </select>
             </div>
           </div>
@@ -954,13 +992,13 @@ export default function CVForm({
       {/* Sertifikalar */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-stone-900">Sertifikalar</h3>
+          <h3 className="text-lg font-semibold text-stone-900">{t('form.certifications.title')}</h3>
           <button
             type="button"
             onClick={addCertification}
             className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
-            + Sertifika Ekle
+            {t('form.certifications.add')}
           </button>
         </div>
         {(formData.certifications || []).map((cert, index) => (
@@ -972,12 +1010,12 @@ export default function CVForm({
                 onClick={() => removeCertification(index)}
                 className="text-sm text-red-600 hover:text-red-700"
               >
-                Kaldır
+                {t('form.common.remove')}
               </button>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-stone-700">Sertifika Adı</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.certifications.name')}</label>
                 <input
                   type="text"
                   value={cert.name}
@@ -990,7 +1028,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">Kurum</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.certifications.issuer')}</label>
                 <input
                   type="text"
                   value={cert.issuer}
@@ -1003,7 +1041,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">Tarih</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.certifications.date')}</label>
                 <input
                   type="month"
                   value={cert.date}
@@ -1016,7 +1054,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">Sertifika ID</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.certifications.credentialId')}</label>
                 <input
                   type="text"
                   value={cert.credentialId || ''}
@@ -1026,27 +1064,27 @@ export default function CVForm({
                     setFormData({ ...formData, certifications: newCerts });
                   }}
                   className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-                  placeholder="Sertifika numarası"
+                  placeholder={t('form.certifications.credentialIdPlaceholder')}
                 />
               </div>
             </div>
           </div>
         ))}
         {(!formData.certifications || formData.certifications.length === 0) && (
-          <p className="text-sm text-stone-500 italic">Sertifika eklemek için yukarıdaki butona tıklayın</p>
+          <p className="text-sm text-stone-500 italic">{t('form.certifications.empty')}</p>
         )}
       </div>
 
       {/* Projeler */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-stone-900">Projeler</h3>
+          <h3 className="text-lg font-semibold text-stone-900">{t('form.projects.title')}</h3>
           <button
             type="button"
             onClick={addProject}
             className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
-            + Proje Ekle
+            {t('form.projects.add')}
           </button>
         </div>
         {(formData.projects || []).map((project, index) => (
@@ -1058,12 +1096,12 @@ export default function CVForm({
                 onClick={() => removeProject(index)}
                 className="text-sm text-red-600 hover:text-red-700"
               >
-                Kaldır
+                {t('form.common.remove')}
               </button>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-stone-700">Proje Adı</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.projects.name')}</label>
                 <input
                   type="text"
                   value={project.name}
@@ -1076,7 +1114,7 @@ export default function CVForm({
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-stone-700">Açıklama</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.projects.description')}</label>
                 <textarea
                   rows={3}
                   value={project.description}
@@ -1089,7 +1127,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">Başlangıç Tarihi</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.experience.startDate')}</label>
                 <input
                   type="month"
                   value={project.startDate}
@@ -1116,10 +1154,10 @@ export default function CVForm({
                     }}
                     className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-stone-300 rounded"
                   />
-                  <label className="text-sm font-medium text-stone-700">Devam ediyor</label>
+                  <label className="text-sm font-medium text-stone-700">{t('form.projects.current')}</label>
                 </div>
                 {!project.isCurrent && (
-                  <label className="block text-sm font-medium text-stone-700">Bitiş Tarihi</label>
+                  <label className="block text-sm font-medium text-stone-700">{t('form.experience.endDate')}</label>
                 )}
                 {!project.isCurrent && (
                   <input
@@ -1135,7 +1173,7 @@ export default function CVForm({
                 )}
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-stone-700">Proje Linki</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.projects.link')}</label>
                 <input
                   type="url"
                   value={project.url || ''}
@@ -1145,27 +1183,27 @@ export default function CVForm({
                     setFormData({ ...formData, projects: newProjects });
                   }}
                   className="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-600 focus:ring-teal-600 sm:text-sm px-3 py-2"
-                  placeholder="https://..."
+                  placeholder={t('form.common.urlPlaceholder')}
                 />
               </div>
             </div>
           </div>
         ))}
         {(!formData.projects || formData.projects.length === 0) && (
-          <p className="text-sm text-stone-500 italic">Proje eklemek için yukarıdaki butona tıklayın</p>
+          <p className="text-sm text-stone-500 italic">{t('form.projects.empty')}</p>
         )}
       </div>
 
       {/* Referanslar */}
       <div>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-stone-900">Referanslar</h3>
+          <h3 className="text-lg font-semibold text-stone-900">{t('form.references.title')}</h3>
           <button
             type="button"
             onClick={addReference}
             className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-teal-700 bg-teal-50 hover:bg-teal-100"
           >
-            + Referans Ekle
+            {t('form.references.add')}
           </button>
         </div>
         {(formData.references || []).map((ref, index) => (
@@ -1177,12 +1215,12 @@ export default function CVForm({
                 onClick={() => removeReference(index)}
                 className="text-sm text-red-600 hover:text-red-700"
               >
-                Kaldır
+                {t('form.common.remove')}
               </button>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-stone-700">Ad Soyad</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.personal.fullName')}</label>
                 <input
                   type="text"
                   value={ref.name}
@@ -1195,7 +1233,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">Pozisyon</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.common.position')}</label>
                 <input
                   type="text"
                   value={ref.position}
@@ -1208,7 +1246,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">Şirket</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.common.company')}</label>
                 <input
                   type="text"
                   value={ref.company}
@@ -1221,7 +1259,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">E-posta</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.personal.email')}</label>
                 <input
                   type="email"
                   value={ref.email}
@@ -1234,7 +1272,7 @@ export default function CVForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-stone-700">Telefon</label>
+                <label className="block text-sm font-medium text-stone-700">{t('form.personal.phone')}</label>
                 <input
                   type="tel"
                   value={ref.phone}
@@ -1250,7 +1288,7 @@ export default function CVForm({
           </div>
         ))}
         {(!formData.references || formData.references.length === 0) && (
-          <p className="text-sm text-stone-500 italic">Referans eklemek için yukarıdaki butona tıklayın</p>
+          <p className="text-sm text-stone-500 italic">{t('form.references.empty')}</p>
         )}
       </div>
     </div>
@@ -1259,30 +1297,30 @@ export default function CVForm({
   const renderSummary = () => (
     <div className="space-y-6">
       <div className="bg-teal-50 border border-teal-200 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-teal-900 mb-2">CV Önizleme</h3>
+        <h3 className="text-lg font-semibold text-teal-900 mb-2">{t('form.preview.title')}</h3>
         <p className="text-sm text-teal-800 mb-4">
-          Tüm bilgilerinizi kontrol edin. Eksik veya hatalı bilgiler varsa geri dönüp düzeltebilirsiniz.
+          {t('form.preview.hint')}
         </p>
         <div className="space-y-3 text-sm">
           <div>
-            <span className="font-medium text-stone-700">CV Başlığı:</span>{' '}
-            <span className="text-stone-600">{formData.title || 'Belirtilmemiş'}</span>
+            <span className="font-medium text-stone-700">{t('form.preview.cvTitle')}</span>{' '}
+            <span className="text-stone-600">{formData.title || t('form.preview.notProvided')}</span>
           </div>
           <div>
-            <span className="font-medium text-stone-700">Ad Soyad:</span>{' '}
-            <span className="text-stone-600">{formData.personalInfo.name || 'Belirtilmemiş'}</span>
+            <span className="font-medium text-stone-700">{t('form.preview.fullName')}</span>{' '}
+            <span className="text-stone-600">{formData.personalInfo.name || t('form.preview.notProvided')}</span>
           </div>
           <div>
-            <span className="font-medium text-stone-700">İş Deneyimi:</span>{' '}
-            <span className="text-stone-600">{formData.workExperience.length} deneyim</span>
+            <span className="font-medium text-stone-700">{t('form.preview.experience')}</span>{' '}
+            <span className="text-stone-600">{t('form.preview.experienceCount', { count: formData.workExperience.length })}</span>
           </div>
           <div>
-            <span className="font-medium text-stone-700">Eğitim:</span>{' '}
-            <span className="text-stone-600">{formData.education.length} eğitim</span>
+            <span className="font-medium text-stone-700">{t('form.preview.education')}</span>{' '}
+            <span className="text-stone-600">{t('form.preview.educationCount', { count: formData.education.length })}</span>
           </div>
           <div>
-            <span className="font-medium text-stone-700">Yetenekler:</span>{' '}
-            <span className="text-stone-600">{formData.skills.filter(s => s).length} yetenek</span>
+            <span className="font-medium text-stone-700">{t('form.preview.skills')}</span>{' '}
+            <span className="text-stone-600">{t('form.preview.skillsCount', { count: formData.skills.filter(s => s).length })}</span>
           </div>
         </div>
       </div>
@@ -1295,10 +1333,10 @@ export default function CVForm({
       <div className="mb-8">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-stone-700">
-            Adım {currentStep} / {totalSteps}
+            {t('form.progress.step', { current: currentStep, total: totalSteps })}
           </span>
           <span className="text-sm text-stone-500">
-            %{Math.round((currentStep / totalSteps) * 100)} tamamlandı
+            {t('form.progress.complete', { percent: Math.round((currentStep / totalSteps) * 100) })}
           </span>
         </div>
         <div className="w-full bg-stone-200 rounded-full h-2">
@@ -1308,12 +1346,12 @@ export default function CVForm({
           />
         </div>
         <div className="flex justify-between mt-2 text-xs text-stone-600">
-          <span>Kişisel Bilgiler</span>
-          <span>İş Deneyimi</span>
-          <span>Eğitim</span>
-          <span>Yetenekler</span>
-          <span>Ek Bilgiler</span>
-          <span>Özet</span>
+          <span>{t('form.personal.title')}</span>
+          <span>{t('form.experience.title')}</span>
+          <span>{t('form.education.title')}</span>
+          <span>{t('form.skills.title')}</span>
+          <span>{t('form.additional.title')}</span>
+          <span>{t('form.preview.summary')}</span>
         </div>
       </div>
 
@@ -1328,7 +1366,7 @@ export default function CVForm({
           disabled={currentStep === 1}
           className="px-4 py-2 border border-stone-300 rounded-md text-sm font-medium text-stone-700 bg-white hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ← Geri
+          {t('form.common.back')}
         </button>
         {currentStep < totalSteps ? (
           <button
@@ -1336,7 +1374,7 @@ export default function CVForm({
             onClick={() => setCurrentStep(Math.min(totalSteps, currentStep + 1))}
             className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-teal-700 hover:bg-teal-800"
           >
-            İleri →
+            {t('form.common.next')}
           </button>
         ) : (
           <button
@@ -1344,7 +1382,7 @@ export default function CVForm({
             disabled={isSubmitting}
             className="px-6 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-teal-700 hover:bg-teal-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? 'Kaydediliyor…' : submitLabel}
+            {isSubmitting ? t('form.common.saving') : submitLabel ?? t('form.common.submit')}
           </button>
         )}
       </div>

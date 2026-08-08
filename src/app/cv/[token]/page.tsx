@@ -3,7 +3,9 @@
 import { use, useEffect, useState } from 'react';
 import CVRender from '@/components/cv/CVRender';
 import type { CVFormData } from '@/components/CVForm';
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
+import { toTemplateId } from '@/data/templates';
+import { useTranslation } from '@/hooks/useTranslation';
+import { toLocale, type ValidLocale } from '@/i18n/settings';
 
 interface CV {
   _id: string;
@@ -62,6 +64,7 @@ interface CV {
     phone?: string;
   }>;
   templateId?: string;
+  language?: ValidLocale;
 }
 
 function cvToFormData(cv: CV): CVFormData {
@@ -75,6 +78,7 @@ function cvToFormData(cv: CV): CVFormData {
 
   return {
     title: cv.title || '',
+    language: cv.language,
     personalInfo: {
       name: cv.personalInfo?.name || '',
       email: cv.personalInfo?.email || '',
@@ -185,6 +189,7 @@ export default function PublicCVPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = use(params);
+  const { t, locale } = useTranslation();
   const [cv, setCV] = useState<CV | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -195,9 +200,9 @@ export default function PublicCVPage({
         const res = await fetch(`/api/cv/public/${token}`);
         if (!res.ok) {
           if (res.status === 404) {
-            setError('CV bulunamadı veya paylaşım kapatılmış');
+            setError(t('errors.cvNotPublic'));
           } else {
-            setError('CV yüklenirken bir hata oluştu');
+            setError(t('errors.cvLoadError'));
           }
           return;
         }
@@ -205,13 +210,13 @@ export default function PublicCVPage({
         setCV(data);
       } catch (e) {
         console.error('Fetch CV error:', e);
-        setError('CV yüklenirken bir hata oluştu');
+        setError(t('errors.cvLoadError'));
       } finally {
         setIsLoading(false);
       }
     };
     fetchCV();
-  }, [token]);
+  }, [token, t]);
 
   if (isLoading) {
     return (
@@ -225,8 +230,8 @@ export default function PublicCVPage({
     return (
       <div className="min-h-screen flex items-center justify-center bg-stone-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-stone-900 mb-2">Hata</h1>
-          <p className="text-stone-600">{error || 'CV bulunamadı'}</p>
+          <h1 className="text-2xl font-bold text-stone-900 mb-2">{t('errors.unexpected')}</h1>
+          <p className="text-stone-600">{error || t('errors.cvNotPublic')}</p>
         </div>
       </div>
     );
@@ -238,7 +243,8 @@ export default function PublicCVPage({
         <div className="bg-white shadow-lg rounded-lg overflow-hidden print:shadow-none print:rounded-none">
           <CVRender
             data={cvToFormData(cv)}
-            templateId={(cv.templateId as TemplateVariant) || 'modern'}
+            templateId={toTemplateId(cv.templateId)}
+            locale={toLocale(cv.language ?? locale)}
           />
         </div>
       </div>

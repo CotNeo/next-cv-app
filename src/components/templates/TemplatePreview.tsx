@@ -1,6 +1,6 @@
 'use client';
 
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
+import type { TemplateVariant } from '@/data/templates';
 import TemplateThumbnail from '@/components/templates/TemplateThumbnail';
 
 interface TemplatePreviewProps {

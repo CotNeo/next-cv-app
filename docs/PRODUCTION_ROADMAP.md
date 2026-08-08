@@ -1,150 +1,132 @@
-# CV Builder – Production Yol Haritası
+# Production deployment guide
 
-Bu doküman, next-cv-app uygulamasının production ortamına güvenli ve sürdürülebilir şekilde çıkışı için adım adım yol haritasıdır.
-
----
-
-## 1. Ön Hazırlık
-
-### 1.1 Ortam Değişkenleri (Env)
-
-| Değişken | Zorunlu | Açıklama |
-|----------|---------|----------|
-| `NEXTAUTH_URL` | ✅ | Prod URL (örn. `https://cv.example.com`) |
-| `NEXTAUTH_SECRET` | ✅ | Güçlü rastgele string (`openssl rand -base64 32`) |
-| `MONGODB_URI` | ✅ | MongoDB bağlantı URI (Atlas veya managed DB) |
-| `OPENAI_API_KEY` | ✅ | AI özellikleri için (ATS, çeviri, iyileştirme) |
-| `GOOGLE_CLIENT_ID` | ❌ | Google OAuth (opsiyonel) |
-| `GOOGLE_CLIENT_SECRET` | ❌ | Google OAuth (opsiyonel) |
-
-- **Asla** `.env` / `.env.local` dosyalarını git’e commit etmeyin.
-- Prod’da env’leri hosting panelinden veya secrets manager’dan tanımlayın.
-
-### 1.2 Google OAuth (Opsiyonel)
-
-Google kullanmak istemiyorsanız, auth config’de provider’ı env varken ekleyecek şekilde güncelleme yapın (aksi halde boş string ile hata riski vardır). Kullanacaksanız:
-
-1. [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
-2. OAuth 2.0 Client ID oluşturun (Web application)
-3. Authorized redirect URI: `https://SITE_DOMAIN/api/auth/callback/google`
-4. `GOOGLE_CLIENT_ID` ve `GOOGLE_CLIENT_SECRET`’i prod env’e ekleyin.
-
-### 1.3 Veritabanı (MongoDB)
-
-- **MongoDB Atlas** (önerilen): Ücretsiz tier veya paid cluster, IP whitelist / VPC, kullanıcı şifresi güçlü olsun.
-- **Managed MongoDB** (DigitalOcean, AWS DocumentDB vb.): Bağlantı string’ini prod’a uygun alın.
-- `MONGODB_URI` formatı: `mongodb+srv://USER:PASS@cluster.mongodb.net/DB?retryWrites=true&w=majority`
-- Şifrede özel karakter varsa URL-encode edin.
+Everything needed to take CV Builder from a local checkout to a running production deployment.
 
 ---
 
-## 2. Kod ve Güvenlik Kontrolleri
+## 1. Environment
 
-### 2.1 Yapılacaklar
+All variables are listed in [`.env.example`](../.env.example). They are validated on server startup by [`src/instrumentation.ts`](../src/instrumentation.ts), so a misconfigured deployment fails fast with every problem listed at once instead of erroring on the first request that needs a secret.
 
-- [ ] **NEXTAUTH_SECRET** geliştirme ortamında farklı, prod’da güçlü ve benzersiz olsun.
-- [ ] **CORS / güvenlik başlıkları**: Hosting’e göre gerekirse `next.config.ts` veya reverse proxy ile ayarlayın.
-- [ ] **Rate limiting**: Özellikle `/api/auth/*`, `/api/cv` ve AI endpoint’leri için düşünün (Vercel’de edge/config, kendi sunucunuzda middleware veya API gateway).
-- [ ] **API hata mesajları**: Prod’da detaylı stack trace veya DB bilgisi dönmeyin; genel mesaj + log’a detay yazın.
-- [ ] **Google OAuth**: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` yoksa provider’ı eklemeyin (kod tarafında conditional provider önerilir).
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `NEXTAUTH_SECRET` | ✅ | ≥ 32 characters in production. `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | ✅ in prod | Must start with `https://` |
+| `MONGODB_URI` | ✅ in prod | The localhost default is rejected in production |
+| `OPENAI_API_KEY` | ❌ | Without it the AI endpoints return 503; the rest of the app works |
+| `OPENAI_MODEL` | ❌ | Defaults to `gpt-4o-mini` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | ❌ | Both or neither |
+| `FREE_CV_LIMIT` | ❌ | CVs a new account may create. Default 3 |
+| `RATE_LIMIT_ENABLED` | ❌ | Default true. Only disable for load testing |
+| `NEXT_PUBLIC_SITE_URL` | ❌ | Canonical URL for sitemap/OG; falls back to `NEXTAUTH_URL` |
 
-### 2.2 Build ve Test
+Never commit `.env` or `.env.local`. Set production values through your host's secret manager.
 
-```bash
-npm run ci      # Lint + build (CI ile aynı)
-npm run build
-npm run start   # Lokal prod simülasyonu
+### Google OAuth (optional)
+
+1. Google Cloud Console → APIs & Services → Credentials
+2. Create an OAuth 2.0 Client ID (Web application)
+3. Authorised redirect URI: `https://YOUR_DOMAIN/api/auth/callback/google`
+4. Add both values to the production environment
+
+The provider is registered only when both variables are present, so leaving them unset is safe. On first Google sign-in the app creates a local user record and maps the session to its Mongo `_id` — without that mapping every CV query would fail, since CVs are keyed by ObjectId.
+
+### Database
+
+**Atlas (recommended)** — create a cluster, a database user with a strong password, and restrict network access to your deployment's egress IPs or a VPC peer.
+
+```
+mongodb+srv://USER:PASS@cluster.mongodb.net/cv-builder?retryWrites=true&w=majority
 ```
 
-- **CI:** Her push/PR’da GitHub Actions lint + build çalıştırır; yeşil olmadan merge etmeyin.
-- Build’in hatasız bittiğini ve `npm run start` ile sayfaların açıldığını doğrulayın.
-- Kritik akışlar: kayıt, giriş, CV oluşturma/düzenleme, PDF indirme, paylaşım linki.
+URL-encode any special characters in the password.
+
+Indexes are declared on the models and created by Mongoose on first connect:
+- `User.email` (unique)
+- `CV.userId`, `CV.{userId, createdAt}`, `CV.shareToken` (unique, sparse)
+- `Application.userId`, `Application.cvId`, `Application.{userId, createdAt}`
 
 ---
 
-## 3. Hosting Seçenekleri
+## 2. Pre-deploy checks
 
-### 3.1 Vercel (Önerilen – Next.js ile uyumlu)
+```bash
+npm run ci     # lint + typecheck + test + build — identical to GitHub Actions
+npm start      # run the production build locally
+```
 
-1. Repo’yu GitHub/GitLab/Bitbucket’a bağlayın.
-2. [Vercel](https://vercel.com) → New Project → Import repo.
-3. Framework: Next.js (otomatik algılanır).
-4. **Environment Variables** ekleyin: `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `MONGODB_URI`, `OPENAI_API_KEY`, (ops.) `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
-5. `NEXTAUTH_URL`: Production için `https://your-app.vercel.app` (veya custom domain).
-6. Deploy; custom domain varsa Vercel’de Domain ayarlarından ekleyin.
+CI runs on every push and PR to `main`. Do not merge on red.
 
-- **Test ortamı:** Repo GitHub’a bağlıysa her push ve her PR için otomatik **Preview** deployment oluşur; her commit’i canlı test URL’i ile deneyebilirsiniz. Production deploy sadece `main` (veya seçtiğiniz production branch) için yapılır.
+Smoke-test these flows against the production build:
 
-**Not:** Serverless fonksiyon timeout’ları (örn. 10 sn) AI/uzun işlemlerde yetersiz kalabilir; gerekirse Pro plan veya farklı mimari (queue + worker) düşünün.
-
-### 3.2 Kendi Sunucunuz (VPS / VM)
-
-1. **Node.js** 18+ kurun.
-2. Repo’yu clone edin, `npm ci`, `npm run build`, `npm run start`.
-3. **Process manager**: PM2 örnek:
-   ```bash
-   npm install -g pm2
-   pm2 start npm --name "cv-builder" -- start
-   pm2 save && pm2 startup
-   ```
-4. **Reverse proxy**: Nginx/Caddy ile `https` ve `proxy_pass` ile Node’a yönlendirin.
-5. **SSL**: Let’s Encrypt (örn. `certbot`) veya Caddy otomatik SSL.
-
-### 3.3 Docker
-
-- `Dockerfile` (Node 18+ ile `npm run build` ve `npm run start`).
-- `.env` prod değerleri container’a env veya secrets ile verilsin; image içine koymayın.
-- MongoDB prod’da ayrı servis (Atlas veya ayrı container) kullanın.
-
-### 3.4 Diğer Platformlar
-
-- **Railway, Render, Fly.io**: Next.js destekleyen ortamlarda benzer şekilde env tanımlayıp build/start komutlarını kullanın.
-- **Netlify**: Next.js için Netlify adapter gerekebilir; genelde Vercel daha sorunsuzdur.
+- [ ] Register, sign out, sign in
+- [ ] Google sign-in, if enabled
+- [ ] Create, edit and delete a CV
+- [ ] Switch templates; confirm every section you filled in appears
+- [ ] Switch the interface language; confirm the CV keeps its own output language
+- [ ] Export a PDF and use the print view
+- [ ] Create a share link, open it signed out, then revoke it and confirm a 404
+- [ ] ATS review, improve, translate and cover letter, if `OPENAI_API_KEY` is set
+- [ ] Hit the CV quota and confirm the upgrade message
+- [ ] `GET /api/health` returns 200
 
 ---
 
-## 4. Domain ve SSL
+## 3. Hosting
 
-- Domain’i hosting sağlayıcısına (Vercel/DNS) yönlendirin.
-- HTTPS zorunlu; `NEXTAUTH_URL` mutlaka `https://` ile başlasın.
-- HTTP → HTTPS yönlendirmesini hosting veya reverse proxy ile yapın.
+### Vercel
+
+1. Import the repository.
+2. Framework is detected automatically.
+3. Add the environment variables above.
+4. Deploy, then set `NEXTAUTH_URL` to the final domain and redeploy.
+
+Every push produces a preview deployment with its own URL; production builds only from `main`.
+
+**Function timeout.** Hobby plans cap execution at 10 seconds. Translating or improving a long CV can exceed that. Use a plan with a longer limit, or move AI calls to a background queue and poll for the result.
+
+**Rate limiting.** Counters live in process memory and each serverless instance has its own. The effective limit is *limit × instances*. For a global guarantee, back `src/lib/rate-limit.ts` with Vercel KV or Redis.
+
+### Docker
+
+```bash
+docker build -t cv-builder .
+docker run -p 3000:3000 --env-file .env.local cv-builder
+```
+
+Multi-stage `output: 'standalone'` build, non-root user, healthcheck on `/api/health`. Pass secrets at runtime — never bake them into the image.
+
+### VPS
+
+```bash
+npm ci
+npm run build
+npm start           # or: pm2 start npm --name cv-builder -- start
+```
+
+Put Nginx or Caddy in front for TLS and HTTP→HTTPS redirects. Point your process manager's health check at `/api/health`.
 
 ---
 
-## 5. Post-Deploy Kontrol Listesi
+## 4. After deploy
 
-- [ ] Ana sayfa ve statik sayfalar açılıyor.
-- [ ] Kayıt / giriş (Credentials) çalışıyor.
-- [ ] Google ile giriş (kullanıyorsanız) çalışıyor.
-- [ ] Dashboard’da CV listesi geliyor.
-- [ ] Yeni CV oluşturma ve düzenleme çalışıyor.
-- [ ] PDF indirme sorunsuz.
-- [ ] Paylaşım linki (`/cv/[token]`) çalışıyor.
-- [ ] AI özellikleri (ATS, çeviri, iyileştirme) env doğruysa çalışıyor.
-- [ ] Mobil görünüm ve temel erişilebilirlik kontrolü.
+- **Uptime** — monitor `GET /api/health`. It returns 503 while MongoDB is unreachable, which is the signal to drain traffic.
+- **Error tracking** — add Sentry or similar. `handleApiError` already logs with route context; `error.tsx` surfaces a `digest` you can correlate.
+- **Cost control** — AI endpoints are limited to 20 calls/hour/user. Watch OpenAI usage after launch and tune `RATE_LIMITS.ai` and `OPENAI_MODEL`.
+- **Backups** — enable Atlas continuous backup or schedule snapshots. CVs are the only data that matters and users cannot recreate them.
+- **Dependencies** — schedule `npm audit` and updates.
 
 ---
 
-## 6. İzleme ve Bakım
+## 5. Known limitations
 
-- **Hata izleme**: Sentry veya benzeri bir servis ekleyin (client + server).
-- **Loglama**: Prod log’ları merkezi toplayın (hosting log’ları, PM2 log, vb.).
-- **Yedekleme**: MongoDB için Atlas backup veya düzenli snapshot.
-- **Güncellemeler**: Bağımlılık güncellemeleri ve güvenlik yamaları için periyodik `npm audit` ve güncelleme planı.
+These are deliberate trade-offs, not oversights. Each is worth revisiting as usage grows.
 
----
-
-## 7. Kısa Özet Zaman Çizelgesi
-
-| Aşama | Yapılacaklar |
-|-------|----------------|
-| **1** | Env’leri listeleyin; NEXTAUTH_SECRET üretin; MongoDB (Atlas vb.) hazırlayın. |
-| **2** | Google OAuth kullanacaksanız Console’da client oluşturup redirect URI ekleyin. |
-| **3** | `npm run build` ve lokal `npm run start` ile test edin. |
-| **4** | Vercel (veya seçtiğiniz platform) üzerinde proje oluşturup env’leri girin. |
-| **5** | Deploy alın; NEXTAUTH_URL’i prod domain ile güncelleyin. |
-| **6** | Domain + SSL ayarlarını yapın. |
-| **7** | Yukarıdaki post-deploy maddelerini tek tek test edin. |
-| **8** | İzleme (Sentry vb.) ve yedekleme stratejisini devreye alın. |
-
-Bu yol haritası, uygulamanın prod ortama çıkışı için gerekli teknik adımları kapsar. Platform (Vercel / VPS / Docker) seçiminize göre ilgili bölümü uygulayabilirsiniz.
+| Area | Current state | When to change it |
+|------|---------------|-------------------|
+| Content-Security-Policy | Not set. Base64 images and Next's inline scripts need a nonce pipeline in middleware | Before handling untrusted user content at scale |
+| Rate limiting | Per-instance, in memory | As soon as you run more than one instance |
+| Profile photos | Base64 inline on the CV document, capped at ~2 MB | If documents approach Mongo's 16 MB limit — move to object storage |
+| Billing | `cvLimit` is enforced, but there is no payment flow. `/pricing` is informational | When you start charging; the quota seam is already in place |
+| AI latency | Synchronous request/response | If serverless timeouts start biting |
+| i18n routing | Locale is a client preference, not a URL segment | If you need per-language SEO — that requires `/[locale]/` routes |

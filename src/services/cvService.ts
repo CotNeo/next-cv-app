@@ -1,175 +1,227 @@
+import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { connectToDatabase } from '@/lib/mongodb';
 import CV from '@/models/CV';
-import { getATSRecommendations, improveCVContent, translateCV } from '@/lib/openai';
+import User from '@/models/User';
+import { getEnv } from '@/lib/env';
+import { ApiError, NotFound } from '@/lib/errors';
+import {
+  getATSReview as requestATSReview,
+  improveCVContent,
+  translateCV,
+} from '@/lib/openai';
+import {
+  parseJSONResponse,
+  sanitizeAICVOutput,
+  type CVContentInput,
+} from '@/lib/validation';
+import type { ValidLocale } from '@/i18n/settings';
 
-export async function createCV(userId: string, cvData: Record<string, unknown>) {
-  try {
-    await connectToDatabase();
-    const cv = new CV({
-      userId,
-      ...cvData,
-    });
-    await cv.save();
-    return cv;
-  } catch (error) {
-    console.error('Error creating CV:', error);
-    throw error;
-  }
+/** Fields the dashboard list needs — deliberately excludes the base64 photo. */
+const LIST_PROJECTION = 'title createdAt updatedAt atsScore templateId language isPublic';
+
+/** Fields safe to expose on a publicly shared CV. */
+const PUBLIC_PROJECTION = '-userId -shareToken -isPublic -atsScore -aiSuggestions -atsReviewedAt -__v';
+
+function assertValidId(cvId: string): void {
+  if (!mongoose.isValidObjectId(cvId)) throw NotFound('CV');
 }
 
-export async function getCVById(cvId: string) {
-  try {
-    await connectToDatabase();
-    const cv = await CV.findById(cvId);
-    if (!cv) throw new Error('CV not found');
-    return cv;
-  } catch (error) {
-    console.error('Error getting CV:', error);
-    throw error;
-  }
+/**
+ * The one place ownership is checked. Returning 404 rather than 403 for another
+ * user's CV keeps the endpoint from confirming that an id exists.
+ */
+export async function getOwnedCV(cvId: string, userId: string) {
+  assertValidId(cvId);
+  await connectToDatabase();
+  const cv = await CV.findOne({ _id: cvId, userId });
+  if (!cv) throw NotFound('CV');
+  return cv;
 }
 
-export async function getUserCVs(userId: string) {
-  try {
-    await connectToDatabase();
-    const cvs = await CV.find({ userId }).sort({ createdAt: -1 });
-    return cvs;
-  } catch (error) {
-    console.error('Error getting user CVs:', error);
-    throw error;
-  }
+export async function listUserCVs(userId: string) {
+  await connectToDatabase();
+  return CV.find({ userId }).select(LIST_PROJECTION).sort({ createdAt: -1 }).lean();
 }
 
-export async function updateCV(cvId: string, updates: Record<string, unknown>) {
-  try {
-    await connectToDatabase();
-    const cv = await CV.findByIdAndUpdate(cvId, { $set: updates }, { new: true });
-    if (!cv) throw new Error('CV not found');
-    return cv;
-  } catch (error) {
-    console.error('Error updating CV:', error);
-    throw error;
-  }
+export interface Quota {
+  used: number;
+  limit: number;
+  remaining: number;
 }
 
-export async function deleteCV(cvId: string) {
-  try {
-    await connectToDatabase();
-    const result = await CV.findByIdAndDelete(cvId);
-    if (!result) throw new Error('CV not found');
-    return result;
-  } catch (error) {
-    console.error('Error deleting CV:', error);
-    throw error;
-  }
+export async function getQuota(userId: string): Promise<Quota> {
+  await connectToDatabase();
+  const [used, user] = await Promise.all([
+    CV.countDocuments({ userId }),
+    User.findById(userId).select('cvLimit').lean(),
+  ]);
+  const limit = user?.cvLimit ?? getEnv().FREE_CV_LIMIT;
+  return { used, limit, remaining: Math.max(0, limit - used) };
 }
 
-export async function getATSReview(cvId: string) {
-  try {
-    const cv = await getCVById(cvId);
-    const content = cvToJsonForAI(cv);
-    const recommendations = await getATSRecommendations(content);
-    if (!recommendations) throw new Error('Failed to get ATS recommendations');
+export async function createCV(userId: string, data: CVContentInput) {
+  await connectToDatabase();
 
-    await updateCV(cvId, {
-      atsScore: Math.min(95, 60 + Math.floor(Math.random() * 35)),
-      aiSuggestions: [recommendations],
-    });
-    return recommendations;
-  } catch (error) {
-    console.error('Error getting ATS review:', error);
-    throw error;
+  const quota = await getQuota(userId);
+  if (quota.remaining <= 0) {
+    throw new ApiError(
+      402,
+      `CV limit reached (${quota.used}/${quota.limit}). Upgrade your plan to create more.`,
+      'quota_exceeded'
+    );
   }
+
+  const cv = new CV({ ...data, userId });
+  return cv.save();
 }
 
-function cvToJsonForAI(cv: { toObject: () => Record<string, unknown> }) {
-  return JSON.stringify(cv.toObject(), null, 2);
+export async function updateCV(
+  cvId: string,
+  userId: string,
+  updates: Partial<CVContentInput>
+) {
+  assertValidId(cvId);
+  await connectToDatabase();
+  const cv = await CV.findOneAndUpdate(
+    { _id: cvId, userId },
+    { $set: updates },
+    { new: true, runValidators: true }
+  );
+  if (!cv) throw NotFound('CV');
+  return cv;
 }
 
-export async function translateCVContent(cvId: string, targetLanguage: string) {
-  try {
-    const cv = await getCVById(cvId);
-    const content = cvToJsonForAI(cv);
-    const translatedContent = await translateCV(content, targetLanguage);
-    if (!translatedContent) throw new Error('Failed to translate CV content');
-
-    const parsed = JSON.parse(translatedContent) as Record<string, unknown>;
-    delete parsed._id;
-    delete parsed.userId;
-    delete parsed.createdAt;
-    delete parsed.updatedAt;
-    delete parsed.__v;
-    await updateCV(cvId, parsed);
-    return translatedContent;
-  } catch (error) {
-    console.error('Error translating CV:', error);
-    throw error;
-  }
+export async function deleteCV(cvId: string, userId: string) {
+  assertValidId(cvId);
+  await connectToDatabase();
+  const result = await CV.findOneAndDelete({ _id: cvId, userId });
+  if (!result) throw NotFound('CV');
+  return result;
 }
 
-export async function improveCV(cvId: string) {
-  try {
-    const cv = await getCVById(cvId);
-    const content = cvToJsonForAI(cv);
-    const improvedContent = await improveCVContent(content);
-    if (!improvedContent) throw new Error('Failed to improve CV content');
+/** Serialises a CV for the model, minus fields it has no business rewriting. */
+function cvToPromptJSON(cv: { toObject: () => Record<string, unknown> }): string {
+  const {
+    _id: _ignoredId,
+    userId: _ignoredUserId,
+    shareToken: _ignoredToken,
+    isPublic: _ignoredPublic,
+    atsScore: _ignoredScore,
+    aiSuggestions: _ignoredSuggestions,
+    atsReviewedAt: _ignoredReviewedAt,
+    createdAt: _ignoredCreatedAt,
+    updatedAt: _ignoredUpdatedAt,
+    __v: _ignoredVersion,
+    ...content
+  } = cv.toObject();
+  return JSON.stringify(content, null, 2);
+}
 
-    const parsed = JSON.parse(improvedContent) as Record<string, unknown>;
-    delete parsed._id;
-    delete parsed.userId;
-    delete parsed.createdAt;
-    delete parsed.updatedAt;
-    delete parsed.__v;
-    await updateCV(cvId, parsed);
-    return improvedContent;
+export interface ATSReviewResult {
+  score: number;
+  suggestions: string[];
+}
+
+export async function runATSReview(
+  cvId: string,
+  userId: string
+): Promise<ATSReviewResult> {
+  const cv = await getOwnedCV(cvId, userId);
+  const review = await requestATSReview(cvToPromptJSON(cv));
+
+  cv.set({
+    atsScore: review.score,
+    aiSuggestions: review.suggestions,
+    atsReviewedAt: new Date(),
+  });
+  await cv.save();
+
+  return review;
+}
+
+/**
+ * Applies an AI rewrite to the CV.
+ *
+ * The model returns the whole document, so its output is parsed, narrowed to
+ * the writable field set and re-validated before anything is persisted — a
+ * malformed or over-eager response fails loudly instead of corrupting the CV.
+ */
+async function applyAIRewrite(
+  cvId: string,
+  userId: string,
+  rewrite: (cvContent: string) => Promise<string>
+) {
+  const cv = await getOwnedCV(cvId, userId);
+  const raw = await rewrite(cvToPromptJSON(cv));
+
+  let updates: Partial<CVContentInput>;
+  try {
+    updates = sanitizeAICVOutput(parseJSONResponse(raw));
   } catch (error) {
-    console.error('Error improving CV:', error);
-    throw error;
+    console.error('[cvService:applyAIRewrite]', error);
+    throw new ApiError(
+      502,
+      'The AI returned an unusable response. Please try again.',
+      'ai_invalid_response'
+    );
   }
+
+  cv.set(updates);
+  await cv.save();
+  return cv;
+}
+
+export async function translateCVContent(
+  cvId: string,
+  userId: string,
+  targetLanguage: ValidLocale
+) {
+  const cv = await applyAIRewrite(cvId, userId, (content) =>
+    translateCV(content, targetLanguage)
+  );
+  // The document is now written in the target language; keep labels in sync.
+  cv.set({ language: targetLanguage });
+  await cv.save();
+  return cv;
+}
+
+export async function improveCV(cvId: string, userId: string) {
+  return applyAIRewrite(cvId, userId, improveCVContent);
 }
 
 export async function getCVByShareToken(shareToken: string) {
-  try {
-    await connectToDatabase();
-    const cv = await CV.findOne({ shareToken, isPublic: true });
-    if (!cv) throw new Error('CV not found or not public');
-    return cv;
-  } catch (error) {
-    console.error('Error getting CV by share token:', error);
-    throw error;
-  }
+  if (!shareToken || shareToken.length > 128) throw NotFound('CV');
+  await connectToDatabase();
+  const cv = await CV.findOne({ shareToken, isPublic: true })
+    .select(PUBLIC_PROJECTION)
+    .lean();
+  if (!cv) throw NotFound('CV');
+  return cv;
 }
 
-export async function generateShareToken(cvId: string) {
-  try {
-    await connectToDatabase();
-    const crypto = await import('crypto');
-    const shareToken = crypto.randomBytes(32).toString('hex');
-    const cv = await CV.findByIdAndUpdate(
-      cvId,
-      { $set: { shareToken, isPublic: true } },
-      { new: true }
-    );
-    if (!cv) throw new Error('CV not found');
-    return shareToken;
-  } catch (error) {
-    console.error('Error generating share token:', error);
-    throw error;
-  }
+export async function generateShareToken(cvId: string, userId: string): Promise<string> {
+  assertValidId(cvId);
+  await connectToDatabase();
+  const shareToken = crypto.randomBytes(32).toString('hex');
+  const cv = await CV.findOneAndUpdate(
+    { _id: cvId, userId },
+    { $set: { shareToken, isPublic: true } },
+    { new: true }
+  );
+  if (!cv) throw NotFound('CV');
+  return shareToken;
 }
 
-export async function revokeShareToken(cvId: string) {
-  try {
-    await connectToDatabase();
-    const cv = await CV.findByIdAndUpdate(
-      cvId,
-      { $set: { shareToken: null, isPublic: false } },
-      { new: true }
-    );
-    if (!cv) throw new Error('CV not found');
-    return cv;
-  } catch (error) {
-    console.error('Error revoking share token:', error);
-    throw error;
-  }
-} 
+export async function revokeShareToken(cvId: string, userId: string) {
+  assertValidId(cvId);
+  await connectToDatabase();
+  const cv = await CV.findOneAndUpdate(
+    { _id: cvId, userId },
+    // $unset rather than null: the unique sparse index rejects a second null.
+    { $unset: { shareToken: '' }, $set: { isPublic: false } },
+    { new: true }
+  );
+  if (!cv) throw NotFound('CV');
+  return cv;
+}

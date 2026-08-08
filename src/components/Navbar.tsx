@@ -3,31 +3,15 @@
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { defaultLocale, languageNames, locales, type ValidLocale } from '@/i18n/settings';
-
-function getStoredLocale(): ValidLocale {
-  if (typeof window === 'undefined') return defaultLocale;
-  const stored = localStorage.getItem('locale');
-  if (stored && locales.includes(stored as ValidLocale)) return stored as ValidLocale;
-  return defaultLocale;
-}
+import { languageNames, type ValidLocale } from '@/i18n/settings';
 
 export default function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
-  const [locale, setLocale] = useState<ValidLocale>(defaultLocale);
-  const { t, changeLocale } = useTranslation(locale);
+  const { t, locale, changeLocale } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    setLocale(getStoredLocale());
-  }, []);
-
-  const handleLocaleChange = (newLocale: ValidLocale) => {
-    changeLocale(newLocale);
-  };
 
   const isActive = (path: string) => pathname === path;
 
@@ -60,7 +44,7 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <select
               value={locale}
-              onChange={(e) => handleLocaleChange(e.target.value as ValidLocale)}
+              onChange={(e) => changeLocale(e.target.value as ValidLocale)}
               className="text-sm text-stone-600 bg-stone-50 border border-stone-200 rounded px-3 py-1.5 cursor-pointer hover:bg-stone-100 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:ring-offset-1"
               aria-label="Select language"
             >
@@ -71,7 +55,8 @@ export default function Navbar() {
 
             {session ? (
               <div className="hidden md:flex items-center gap-4">
-                <Link href="/dashboard" className={linkClass(false)}>{t('nav.dashboard')}</Link>
+                <Link href="/dashboard" className={linkClass(isActive('/dashboard'))}>{t('nav.dashboard')}</Link>
+                <Link href="/dashboard/applications" className={linkClass(isActive('/dashboard/applications'))}>{t('applications.title')}</Link>
                 <button onClick={() => signOut()} className="text-sm font-medium text-stone-600 hover:text-stone-900">
                   {t('nav.signOut')}
                 </button>
@@ -110,7 +95,8 @@ export default function Navbar() {
             <Link href="/about" className={`block py-2 ${linkClass(isActive('/about'))}`} onClick={() => setIsMobileMenuOpen(false)}>{t('nav.about')}</Link>
             {session ? (
               <>
-                <Link href="/dashboard" className={`block py-2 ${linkClass(false)}`} onClick={() => setIsMobileMenuOpen(false)}>{t('nav.dashboard')}</Link>
+                <Link href="/dashboard" className={`block py-2 ${linkClass(isActive('/dashboard'))}`} onClick={() => setIsMobileMenuOpen(false)}>{t('nav.dashboard')}</Link>
+                <Link href="/dashboard/applications" className={`block py-2 ${linkClass(isActive('/dashboard/applications'))}`} onClick={() => setIsMobileMenuOpen(false)}>{t('applications.title')}</Link>
                 <button onClick={() => { signOut(); setIsMobileMenuOpen(false); }} className="block w-full text-left py-2 text-sm font-medium text-stone-600 hover:text-stone-900">{t('nav.signOut')}</button>
               </>
             ) : (

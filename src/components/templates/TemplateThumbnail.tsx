@@ -1,22 +1,8 @@
 'use client';
 
-export type TemplateVariant =
-  | 'modern'
-  | 'classic'
-  | 'minimal'
-  | 'professional'
-  | 'technical'
-  | 'creative'
-  | 'executive'
-  | 'clean'
-  | 'elegant'
-  | 'corporate'
-  | 'developer'
-  | 'portfolio'
-  | 'academic'
-  | 'innovative'
-  | 'artistic'
-  | 'scholar';
+import type { TemplateVariant } from '@/data/templates';
+
+export type { TemplateVariant };
 
 interface TemplateThumbnailProps {
   variant: TemplateVariant;

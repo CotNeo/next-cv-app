@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 interface ContactFormData {
   name: string;
@@ -33,15 +32,10 @@ const AddressIcon = () => (
 );
 
 export default function ContactPage() {
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   const {
     register,

@@ -1,68 +1,32 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { generateShareToken, revokeShareToken, getCVById } from '@/services/cvService';
+import { handleApiError, requireUserId } from '@/lib/api';
+import { enforceRateLimit } from '@/lib/rate-limit';
+import { generateShareToken, revokeShareToken } from '@/services/cvService';
 
-async function assertOwnership(cvId: string, userId: string) {
-  const cv = await getCVById(cvId);
-  if (cv.userId.toString() !== userId) {
-    throw new Error('Unauthorized');
-  }
-  return cv;
-}
+type RouteContext = { params: Promise<{ id: string }> };
 
-export async function POST(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(_request: Request, { params }: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = await requireUserId();
+    enforceRateLimit('write', userId);
+
     const { id } = await params;
-    await assertOwnership(id, session.user.id);
-    const shareToken = await generateShareToken(id);
+    const shareToken = await generateShareToken(id, userId);
     return NextResponse.json({ shareToken });
   } catch (error) {
-    if ((error as Error).message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if ((error as Error).message === 'CV not found') {
-      return NextResponse.json({ error: 'CV not found' }, { status: 404 });
-    }
-    console.error('Share CV error:', error);
-    return NextResponse.json(
-      { error: 'Failed to share CV' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'POST /api/cv/[id]/share');
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: Request, { params }: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = await requireUserId();
+    enforceRateLimit('write', userId);
+
     const { id } = await params;
-    await assertOwnership(id, session.user.id);
-    await revokeShareToken(id);
+    await revokeShareToken(id, userId);
     return NextResponse.json({ success: true });
   } catch (error) {
-    if ((error as Error).message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if ((error as Error).message === 'CV not found') {
-      return NextResponse.json({ error: 'CV not found' }, { status: 404 });
-    }
-    console.error('Revoke share error:', error);
-    return NextResponse.json(
-      { error: 'Failed to revoke share' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'DELETE /api/cv/[id]/share');
   }
 }

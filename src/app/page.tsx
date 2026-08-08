@@ -2,9 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 import FeatureCard from '@/components/features/FeatureCard';
 import HowItWorksStep from '@/components/features/HowItWorksStep';
 import Hero3D from '@/components/Hero3D';
@@ -20,13 +18,7 @@ const steps = [1, 2, 3, 4];
 
 export default function HomePage() {
   const { data: session } = useSession();
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
-
-  useEffect(() => {
-    const savedLocale = localStorage.getItem('locale') as ValidLocale;
-    if (savedLocale) setCurrentLocale(savedLocale);
-  }, []);
+  const { t, locale } = useTranslation();
 
   return (
     <div className="min-h-screen bg-stone-50">
@@ -111,7 +103,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((f) => (
-              <FeatureCard key={f.key} featureKey={f.key} icon={f.icon} locale={currentLocale} />
+              <FeatureCard key={f.key} featureKey={f.key} icon={f.icon} locale={locale} />
             ))}
           </div>
         </div>
@@ -130,7 +122,7 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {steps.map((step) => (
-              <HowItWorksStep key={step} step={step} locale={currentLocale} />
+              <HowItWorksStep key={step} step={step} locale={locale} />
             ))}
           </div>
         </div>

@@ -1,34 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import TemplateThumbnail from '@/components/templates/TemplateThumbnail';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 import { templates, categories } from '@/data/templates';
+import { templateDescription, templateMatchesQuery, templateName } from '@/lib/template-i18n';
 
 function getCategoryLabel(name: string, t: (key: string) => string): string {
   return name === 'all' ? t('home.templates.categories.all') : t('home.templates.categories.' + name.toLowerCase());
 }
 
 export default function TemplatesPage() {
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   const filteredTemplates = templates.filter((tpl) => {
     const matchCat = selectedCategory === 'all' || tpl.category === selectedCategory;
-    const matchSearch =
-      !searchQuery.trim() ||
-      tpl.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tpl.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchCat && matchSearch;
+    return matchCat && templateMatchesQuery(t, tpl, searchQuery);
   });
 
   return (
@@ -96,11 +87,7 @@ export default function TemplatesPage() {
               <div className="p-4 pt-0">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-stone-900 group-hover:text-teal-700">
-                    {(() => {
-                      const key = `home.templates.items.${tpl.id}.name`;
-                      const v = t(key);
-                      return v === key ? tpl.name : v;
-                    })()}
+                    {templateName(t, tpl)}
                   </h3>
                   {tpl.popular && (
                     <span className="text-xs font-medium text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
@@ -109,11 +96,7 @@ export default function TemplatesPage() {
                   )}
                 </div>
                 <p className="text-xs text-stone-500 line-clamp-2">
-                  {(() => {
-                    const key = `home.templates.items.${tpl.id}.description`;
-                    const v = t(key);
-                    return v === key ? tpl.description : v;
-                  })()}
+                  {templateDescription(t, tpl)}
                 </p>
                 <span className="mt-2 inline-block text-xs font-medium text-teal-700 group-hover:text-teal-800">
                   {t('home.templates.preview')}

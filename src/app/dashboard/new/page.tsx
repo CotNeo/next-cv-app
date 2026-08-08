@@ -5,10 +5,9 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import CVForm from '@/components/CVForm';
 import TemplateThumbnail from '@/components/templates/TemplateThumbnail';
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
+import { isTemplateId, type TemplateVariant } from '@/data/templates';
 import { getTemplateById, templates, categories } from '@/data/templates';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 function TemplateHeader({ t }: { t: (key: string) => string }) {
   const searchParams = useSearchParams();
@@ -18,7 +17,7 @@ function TemplateHeader({ t }: { t: (key: string) => string }) {
   return (
     <p className="mt-1 text-stone-600">
       {template
-        ? t('dashboard.new.withTemplate').replace('{name}', t('templates.items.' + template.id + '.name'))
+        ? t('dashboard.new.withTemplate').replace('{name}', t('home.templates.items.' + template.id + '.name'))
         : t('dashboard.new.fillForm')}
     </p>
   );
@@ -63,7 +62,7 @@ function TemplateSelectorContent({
                 : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
-            {c.name === 'all' ? t('templates.categories.all') : t('templates.categories.' + c.name.toLowerCase())} ({c.count})
+            {c.name === 'all' ? t('home.templates.categories.all') : t('home.templates.categories.' + c.name.toLowerCase())} ({c.count})
           </button>
         ))}
       </div>
@@ -85,10 +84,10 @@ function TemplateSelectorContent({
             <p className={`text-xs font-medium text-center ${
               selectedTemplate === tm.id ? 'text-teal-700' : 'text-stone-700'
             }`}>
-              {t('templates.items.' + tm.id + '.name')}
+              {t('home.templates.items.' + tm.id + '.name')}
             </p>
             {tm.popular && (
-              <span className="block text-[10px] text-teal-600 text-center mt-1">{t('templates.popular')}</span>
+              <span className="block text-[10px] text-teal-600 text-center mt-1">{t('home.templates.popular')}</span>
             )}
           </button>
         ))}
@@ -97,7 +96,7 @@ function TemplateSelectorContent({
       {selectedTemplate && (
         <div className="mt-4 p-3 bg-teal-50 border border-teal-200 rounded-lg">
           <p className="text-sm text-teal-800">
-            {t('dashboard.new.templateSelectedMessage').replace('{name}', t('templates.items.' + selectedTemplate + '.name'))}
+            {t('dashboard.new.templateSelectedMessage').replace('{name}', t('home.templates.items.' + selectedTemplate + '.name'))}
           </p>
         </div>
       )}
@@ -108,7 +107,7 @@ function TemplateSelectorContent({
 function TemplateSelector({ onSelect, t }: { onSelect: (templateId: TemplateVariant) => void; t: (key: string) => string }) {
   const searchParams = useSearchParams();
   const templateParam = searchParams.get('template');
-  const initialTemplate = templateParam ? (templateParam as TemplateVariant) : null;
+  const initialTemplate = isTemplateId(templateParam) ? templateParam : null;
 
   return <TemplateSelectorContent onSelect={onSelect} initialTemplate={initialTemplate} t={t} />;
 }
@@ -124,14 +123,9 @@ function NewCVForm({ templateId }: { templateId: TemplateVariant | null }) {
 export default function NewCVPage() {
   const { status } = useSession();
   const router = useRouter();
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t } = useTranslation();
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateVariant | null>(null);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -142,8 +136,8 @@ export default function NewCVPage() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const templateParam = urlParams.get('template');
-    if (templateParam) {
-      setSelectedTemplate(templateParam as TemplateVariant);
+    if (isTemplateId(templateParam)) {
+      setSelectedTemplate(templateParam);
     }
   }, []);
 

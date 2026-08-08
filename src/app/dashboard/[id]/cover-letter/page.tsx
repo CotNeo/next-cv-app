@@ -1,12 +1,11 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 const LANGUAGES = [
   { value: 'tr', label: 'Türkçe' },
@@ -23,8 +22,7 @@ export default function CoverLetterPage({
   const { id } = use(params);
   const router = useRouter();
   const { status } = useSession();
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t } = useTranslation();
   const [jobTitle, setJobTitle] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -32,10 +30,6 @@ export default function CoverLetterPage({
   const [coverLetter, setCoverLetter] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   if (status === 'unauthenticated') {
     router.push('/auth/login');
@@ -62,8 +56,13 @@ export default function CoverLetterPage({
         }),
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data?.error ?? t('dashboard.coverLetter.errorCreate'));
+        const data = await res.json().catch(() => null);
+        const byCode: Record<string, string> = {
+          ai_unavailable: t('dashboard.toast.aiUnavailable'),
+          ai_rate_limited: t('dashboard.toast.aiRateLimited'),
+          rate_limited: t('dashboard.toast.aiRateLimited'),
+        };
+        throw new Error(byCode[data?.code] ?? t('dashboard.coverLetter.errorCreate'));
       }
       const data = await res.json();
       setCoverLetter(data.coverLetter ?? '');

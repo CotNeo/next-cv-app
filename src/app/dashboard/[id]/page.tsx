@@ -8,10 +8,11 @@ import CVForm, { type CVFormData } from '@/components/CVForm';
 import CVRender from '@/components/cv/CVRender';
 import TemplateThumbnail from '@/components/templates/TemplateThumbnail';
 import Link from 'next/link';
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
+import type { TemplateVariant } from '@/data/templates';
 import { templates, categories } from '@/data/templates';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
+import { toLocale, type ValidLocale } from '@/i18n/settings';
+import { toTemplateId } from '@/data/templates';
 
 interface CV {
   _id: string;
@@ -69,6 +70,7 @@ interface CV {
   atsScore?: number;
   aiSuggestions?: string[];
   templateId?: string;
+  language?: ValidLocale;
   shareToken?: string;
   isPublic?: boolean;
   createdAt: string;
@@ -108,7 +110,7 @@ function TemplateSelectorComponent({
                 : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
             }`}
           >
-            {c.name === 'all' ? t('templates.categories.all') : t('templates.categories.' + c.name.toLowerCase())} ({c.count})
+            {c.name === 'all' ? t('home.templates.categories.all') : t('home.templates.categories.' + c.name.toLowerCase())} ({c.count})
           </button>
         ))}
       </div>
@@ -130,10 +132,10 @@ function TemplateSelectorComponent({
             <p className={`text-xs font-medium text-center ${
               currentTemplate === tm.id ? 'text-teal-700' : 'text-stone-700'
             }`}>
-              {t('templates.items.' + tm.id + '.name')}
+              {t('home.templates.items.' + tm.id + '.name')}
             </p>
             {tm.popular && (
-              <span className="block text-[10px] text-teal-600 text-center mt-1">{t('templates.popular')}</span>
+              <span className="block text-[10px] text-teal-600 text-center mt-1">{t('home.templates.popular')}</span>
             )}
           </button>
         ))}
@@ -152,6 +154,7 @@ function cvToFormData(cv: CV): CVFormData {
   const refs = cv.references ?? [];
   return {
     title: cv.title ?? '',
+    language: cv.language,
     personalInfo: {
       name: cv.personalInfo?.name ?? '',
       email: cv.personalInfo?.email ?? '',
@@ -252,8 +255,7 @@ export default function CVDetailPage({
   const { id } = use(params);
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t, locale } = useTranslation();
   const [cv, setCV] = useState<CV | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -262,10 +264,6 @@ export default function CVDetailPage({
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateVariant | null>(null);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   const fetchCV = useCallback(async () => {
     try {
@@ -273,7 +271,7 @@ export default function CVDetailPage({
       if (!res.ok) throw new Error('Failed to fetch CV');
       const data = await res.json();
       setCV(data);
-      setSelectedTemplate((data.templateId as TemplateVariant) || 'modern');
+      setSelectedTemplate(toTemplateId(data.templateId));
       if (data.shareToken) {
         setShareLink(`${window.location.origin}/cv/${data.shareToken}`);
       } else {
@@ -309,13 +307,21 @@ export default function CVDetailPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
-          templateId: selectedTemplate || cv.templateId || 'modern',
+          templateId: toTemplateId(selectedTemplate ?? cv.templateId),
         }),
       });
-      if (!res.ok) throw new Error('Failed to update CV');
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        toast.error(
+          body?.code === 'validation_failed'
+            ? t('form.toast.validationError')
+            : t('dashboard.detail.updateError')
+        );
+        return;
+      }
       const updated = await res.json();
       setCV(updated);
-      setSelectedTemplate((updated.templateId as TemplateVariant) || 'modern');
+      setSelectedTemplate(toTemplateId(updated.templateId));
       setIsEditing(false);
       setShowTemplateSelector(false);
       toast.success(t('dashboard.detail.updateSuccess'));
@@ -325,20 +331,40 @@ export default function CVDetailPage({
     }
   };
 
+  /** Maps the API's error code onto a translated message. */
+  const aiErrorMessage = (code: string | undefined, fallback: string) => {
+    if (code === 'ai_unavailable') return t('dashboard.toast.aiUnavailable');
+    if (code === 'rate_limited' || code === 'ai_rate_limited') {
+      return t('dashboard.toast.aiRateLimited');
+    }
+    return fallback;
+  };
+
   const handleATSReview = async () => {
     try {
+      toast.loading(t('dashboard.toast.atsReviewLoading'), { id: 'ats' });
       const res = await fetch(`/api/cv/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'ats-review' }),
       });
-      if (!res.ok) throw new Error('ATS review failed');
-      const text = await res.json();
+      const body = await res.json().catch(() => null);
+      if (!res.ok) {
+        toast.error(
+          aiErrorMessage(body?.code, t('dashboard.toast.atsReviewError')),
+          { id: 'ats' }
+        );
+        return;
+      }
+      // The score and suggestions both come from the model now.
       setCV((prev) =>
-        prev ? { ...prev, aiSuggestions: [text] } : null
+        prev ? { ...prev, atsScore: body.score, aiSuggestions: body.suggestions } : null
       );
+      setExpandedSuggestions(new Array(body.suggestions?.length ?? 0).fill(false));
+      toast.success(t('dashboard.toast.atsReviewSuccess'), { id: 'ats' });
     } catch (e) {
       console.error('ATS review error:', e);
+      toast.error(t('dashboard.toast.atsReviewError'), { id: 'ats' });
     }
   };
 
@@ -353,7 +379,11 @@ export default function CVDetailPage({
           data: { targetLanguage },
         }),
       });
-      if (!res.ok) throw new Error('Translate failed');
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        toast.error(aiErrorMessage(body?.code, t('dashboard.toast.translateError')), { id: 'translate' });
+        return;
+      }
       await fetchCV();
       toast.success(t('dashboard.toast.translateSuccess'), { id: 'translate' });
     } catch (e) {
@@ -370,7 +400,11 @@ export default function CVDetailPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'improve' }),
       });
-      if (!res.ok) throw new Error('Improve failed');
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        toast.error(aiErrorMessage(body?.code, t('dashboard.toast.improveError')), { id: 'improve' });
+        return;
+      }
       await fetchCV();
       toast.success(t('dashboard.toast.improveSuccess'), { id: 'improve' });
     } catch (e) {
@@ -547,10 +581,10 @@ export default function CVDetailPage({
                   </div>
                   <div>
                     <p className="font-medium text-stone-900">
-                      {t('templates.items.' + selectedTemplate + '.name')} {t('dashboard.detail.templateLabel')}
+                      {t('home.templates.items.' + selectedTemplate + '.name')} {t('dashboard.detail.templateLabel')}
                     </p>
                     <p className="text-sm text-stone-600">
-                      {t('templates.items.' + selectedTemplate + '.description')}
+                      {t('home.templates.items.' + selectedTemplate + '.description')}
                     </p>
                   </div>
                 </div>
@@ -561,7 +595,7 @@ export default function CVDetailPage({
                   onSelect={(templateId) => {
                     setSelectedTemplate(templateId);
                     setShowTemplateSelector(false);
-                    toast.success(t('dashboard.detail.templateSelected').replace('{name}', t('templates.items.' + templateId + '.name')));
+                    toast.success(t('dashboard.detail.templateSelected').replace('{name}', t('home.templates.items.' + templateId + '.name')));
                   }}
                   t={t}
                 />
@@ -697,7 +731,8 @@ export default function CVDetailPage({
             <div className="bg-white shadow rounded-lg p-6">
               <CVRender
                 data={cvToFormData(cv)}
-                templateId={(cv.templateId as TemplateVariant) || 'modern'}
+                templateId={toTemplateId(cv.templateId)}
+                locale={toLocale(cv.language ?? locale)}
               />
             </div>
 

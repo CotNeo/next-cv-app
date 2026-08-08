@@ -1,11 +1,10 @@
-'use client';
-
-import { SessionProvider } from 'next-auth/react';
+import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
-import { Toaster } from 'react-hot-toast';
 import './globals.css';
 import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
+import Providers from '@/app/providers';
+import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from '@/lib/site';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -13,50 +12,48 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: '--font-plus-jakarta',
 });
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl()),
+  title: {
+    default: `${SITE_NAME} – AI-powered CV builder`,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} – AI-powered CV builder`,
+    description: SITE_DESCRIPTION,
+    url: siteUrl(),
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${SITE_NAME} – AI-powered CV builder`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#0f766e',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={plusJakarta.variable}>
+    // lang/dir are corrected on the client by LocaleProvider once the stored
+    // preference is known; suppressHydrationWarning keeps that from warning.
+    <html lang="en" dir="ltr" className={plusJakarta.variable} suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <SessionProvider>
+        <Providers>
           <div className="min-h-screen flex flex-col">
             <Navbar />
-            
-            <main className="flex-grow pt-14">
-              {children}
-            </main>
-            
+            <main className="flex-grow pt-14">{children}</main>
             <Footer />
           </div>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3000,
-              style: {
-                background: '#fff',
-                color: '#1c1917',
-                border: '1px solid #e7e5e4',
-                borderRadius: '8px',
-                padding: '12px 16px',
-              },
-              success: {
-                iconTheme: {
-                  primary: '#0f766e',
-                  secondary: '#fff',
-                },
-              },
-              error: {
-                iconTheme: {
-                  primary: '#dc2626',
-                  secondary: '#fff',
-                },
-              },
-            }}
-          />
-        </SessionProvider>
+        </Providers>
       </body>
     </html>
   );

@@ -1,11 +1,11 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use } from 'react';
 import Link from 'next/link';
 import TemplatePreview from '@/components/templates/TemplatePreview';
 import { getTemplateById } from '@/data/templates';
+import { templateDescription, templateName } from '@/lib/template-i18n';
 import { useTranslation } from '@/hooks/useTranslation';
-import { ValidLocale, defaultLocale } from '@/i18n/settings';
 
 function getCategoryLabel(category: string, t: (key: string) => string): string {
   return t('home.templates.categories.' + category.toLowerCase());
@@ -18,13 +18,8 @@ export default function TemplateDetailPage({
 }) {
   const { id } = use(params);
   const template = getTemplateById(id);
-  const [currentLocale, setCurrentLocale] = useState<ValidLocale>(defaultLocale);
-  const { t } = useTranslation(currentLocale);
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    const saved = localStorage.getItem('locale') as ValidLocale | null;
-    if (saved) setCurrentLocale(saved);
-  }, []);
 
   if (!template) {
     return (
@@ -52,11 +47,7 @@ export default function TemplateDetailPage({
             {t('home.templates.detail.backToList')}
           </Link>
           <div className="flex flex-wrap items-center gap-2 mb-2">
-            <h1 className="text-2xl sm:text-3xl font-bold">{(() => {
-            const key = `home.templates.items.${template.id}.name`;
-            const v = t(key);
-            return v === key ? template.name : v;
-          })()}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">{templateName(t, template)}</h1>
             {template.popular && (
               <span className="text-xs font-medium text-amber-400 bg-amber-900/50 px-2 py-1 rounded">
                 {t('home.templates.popular')}
@@ -64,13 +55,7 @@ export default function TemplateDetailPage({
             )}
             <span className="text-sm text-stone-400">{getCategoryLabel(template.category, t)}</span>
           </div>
-          <p className="text-stone-400 max-w-xl">
-          {(() => {
-            const key = `home.templates.items.${template.id}.description`;
-            const v = t(key);
-            return v === key ? template.description : v;
-          })()}
-        </p>
+          <p className="text-stone-400 max-w-xl">{templateDescription(t, template)}</p>
         </div>
       </header>
 

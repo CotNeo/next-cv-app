@@ -1,17 +1,30 @@
+import mongoose from 'mongoose';
 import { connectToDatabase } from '@/lib/mongodb';
 import Application from '@/models/Application';
-import { getCVById } from './cvService';
+import { NotFound } from '@/lib/errors';
 import { generateCoverLetter } from '@/lib/openai';
-
-function cvToTextForAI(cv: { toObject: () => Record<string, unknown> }): string {
-  return JSON.stringify(cv.toObject(), null, 2);
-}
+import { getOwnedCV } from './cvService';
+import type { ValidLocale } from '@/i18n/settings';
 
 export interface CreateCoverLetterInput {
   jobTitle: string;
   companyName: string;
   jobDescription?: string;
-  language?: string;
+  language: ValidLocale;
+}
+
+/** Everything the letter generator needs, minus fields it should not see. */
+function cvToPromptJSON(cv: { toObject: () => Record<string, unknown> }): string {
+  const {
+    _id: _ignoredId,
+    userId: _ignoredUserId,
+    shareToken: _ignoredToken,
+    isPublic: _ignoredPublic,
+    aiSuggestions: _ignoredSuggestions,
+    __v: _ignoredVersion,
+    ...content
+  } = cv.toObject();
+  return JSON.stringify(content, null, 2);
 }
 
 export async function createCoverLetter(
@@ -19,59 +32,55 @@ export async function createCoverLetter(
   userId: string,
   input: CreateCoverLetterInput
 ): Promise<{ applicationId: string; coverLetter: string }> {
-  await connectToDatabase();
-  const cv = await getCVById(cvId);
-  if (cv.userId.toString() !== userId) {
-    throw new Error('Unauthorized');
-  }
+  // Throws 404 when the CV does not exist or belongs to somebody else.
+  const cv = await getOwnedCV(cvId, userId);
 
-  const cvContent = cvToTextForAI(cv);
-  const language = input.language ?? 'tr';
-  const coverLetter = await generateCoverLetter(
-    cvContent,
-    input.jobTitle,
-    input.companyName,
-    input.jobDescription ?? '',
-    language
-  );
+  const coverLetter = await generateCoverLetter({
+    cvContent: cvToPromptJSON(cv),
+    jobTitle: input.jobTitle,
+    companyName: input.companyName,
+    jobDescription: input.jobDescription ?? '',
+    language: input.language,
+  });
 
-  if (!coverLetter) {
-    throw new Error('Failed to generate cover letter');
-  }
-
-  const app = new Application({
+  const application = await Application.create({
     userId,
     cvId,
     jobTitle: input.jobTitle,
     companyName: input.companyName,
     jobDescription: input.jobDescription ?? '',
     coverLetter,
-    language,
+    language: input.language,
   });
-  await app.save();
 
   return {
-    applicationId: app._id.toString(),
+    applicationId: application._id.toString(),
     coverLetter,
   };
 }
 
-export async function getApplicationsByUser(userId: string) {
+export async function listUserApplications(userId: string) {
   await connectToDatabase();
   return Application.find({ userId })
+    .select('jobTitle companyName language cvId createdAt coverLetter')
     .sort({ createdAt: -1 })
+    .limit(200)
     .populate('cvId', 'title')
     .lean();
 }
 
-export async function getApplicationById(
-  applicationId: string,
-  userId: string
-) {
+export async function getApplication(applicationId: string, userId: string) {
+  if (!mongoose.isValidObjectId(applicationId)) throw NotFound('Application');
   await connectToDatabase();
-  const app = await Application.findById(applicationId).lean();
-  if (!app || app.userId.toString() !== userId) {
-    throw new Error('Application not found');
-  }
-  return app;
+  const application = await Application.findOne({ _id: applicationId, userId }).lean();
+  if (!application) throw NotFound('Application');
+  return application;
+}
+
+export async function deleteApplication(applicationId: string, userId: string) {
+  if (!mongoose.isValidObjectId(applicationId)) throw NotFound('Application');
+  await connectToDatabase();
+  const deleted = await Application.findOneAndDelete({ _id: applicationId, userId });
+  if (!deleted) throw NotFound('Application');
+  return deleted;
 }

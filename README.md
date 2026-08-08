@@ -1,314 +1,209 @@
-# CV Builder – Modern CV Creation Platform
+# CV Builder
 
-AI-powered, multilingual CV creation platform. Built with Next.js, TypeScript, and Tailwind CSS.
+AI-assisted, multilingual CV builder. Next.js 15 (App Router), TypeScript, Tailwind CSS v4, MongoDB and OpenAI.
 
-## 🚀 Features
+Create a CV from 16 professional templates, get an ATS score and rewrite suggestions, translate it into six languages, generate a tailored cover letter, export to PDF and share it with a revocable public link.
 
-### Core Features
-- **AI-Powered Suggestions**: Personalized recommendations to improve CV content and formatting
-- **ATS Optimization**: ATS review and scoring with detailed feedback
-- **Professional Templates**: 16 professionally designed templates with category filtering
-- **Template Selection**: Choose templates when creating or editing CVs
-- **Multilingual Support**: Translate your CV into multiple languages (AI-powered)
-- **Cloud Storage**: Save and manage unlimited CVs
-- **Responsive Design**: Consistent experience across all devices
+---
 
-### Advanced Features
-- **Profile Photo Upload**: Add profile pictures with size and format validation
-- **Comprehensive CV Fields**: 
-  - Personal information (name, email, phone, location, website, LinkedIn, profile photo)
-  - Work experience with "currently working" option
-  - Education with "currently studying" option
-  - Skills and languages
-  - Certifications (name, issuer, date, credential ID, URL)
-  - Projects (name, description, technologies, URL, dates)
-  - References (name, position, company, email, phone)
-- **Public CV Sharing**: Generate shareable links for your CV
-- **PDF Export**: Download CVs as PDF files
-- **CV Preview**: Real-time preview of your CV
-- **Multi-step Form**: Intuitive 6-step CV creation process
-- **Toast Notifications**: User-friendly feedback for all actions
-- **Confirmation Modals**: Safe deletion with confirmation dialogs
+## Features
 
-### UI/UX Features
-- **3D Hero Animation**: Futuristic Three.js animated background
-- **Modern Design System**: Stone and teal color palette
-- **Typography**: Plus Jakarta Sans font family
-- **Loading States**: Enhanced loading indicators
-- **Error Handling**: Comprehensive error messages and recovery
+**CV editor**
+- Six-step form covering personal details, work experience, education, skills, languages, certifications, projects and references
+- Profile photo upload with type and size validation (2 MB)
+- "Currently working / studying / ongoing" handling on every dated section
+- Live preview and template switching while editing
 
-## 📄 Pages
+**Templates**
+- 16 templates across 5 categories, each rendering *every* section — nothing you enter is silently dropped
+- Per-CV output language: browse the app in Turkish and still produce an English CV
+- Right-to-left layout for Arabic
+- Print- and PDF-optimised
 
-- **Home** (`/`): Landing page with hero section, features, and how it works
-- **Templates** (`/templates`): Browse all CV templates with category filtering
-- **Template Preview** (`/templates/[id]`): Detailed preview of each template
-- **Dashboard** (`/dashboard`): List all your CVs
-- **New CV** (`/dashboard/new`): Create new CV with template selection
-- **CV Detail** (`/dashboard/[id]`): View, edit, and manage CV
-- **CV View** (`/dashboard/[id]/view`): Full-screen CV preview with PDF export
-- **Public CV** (`/cv/[token]`): Publicly shared CV view
-- **Pricing** (`/pricing`): Pricing plans
-- **About** (`/about`): About page with team information
-- **Contact** (`/contact`): Contact form
-- **Privacy** (`/privacy`): Privacy policy
-- **Terms** (`/terms`): Terms of service
-- **FAQ** (`/faq`): Frequently asked questions
-- **Auth** (`/auth/login`, `/auth/register`): Authentication pages
+**AI (optional, requires `OPENAI_API_KEY`)**
+- **ATS review** — a real 0–100 score plus specific recommendations, both from the model
+- **Improve** — rewrites the CV's prose to be more impactful and ATS-friendly
+- **Translate** — rewrites the CV into any supported language and updates its output language
+- **Cover letters** — tailored to a job title, company and description; saved and listed under *Cover letters*
 
-## 🌍 Supported Languages (i18n)
+**Sharing and export**
+- Revocable share links backed by a 256-bit token; public responses omit owner and scoring fields
+- Client-side PDF export and print stylesheet
 
-- English
-- Türkçe (Turkish)
-- Deutsch (German)
-- Русский (Russian)
-- العربية (Arabic)
-- Français (French)
+**Interface**
+- Six languages: English, Türkçe, Deutsch, Français, Русский, العربية
+- Language switching without a page reload; `<html lang>` and `dir` stay in sync
+- Three.js hero animation, toast notifications, confirmation dialogs
 
-## 📋 Requirements
+---
 
-- Node.js 18+
-- npm or yarn
-- MongoDB (local or cloud instance)
+## Requirements
 
-## 🛠️ Installation
+- Node.js 20+
+- MongoDB (local or Atlas)
+- An OpenAI API key — optional; without it the AI endpoints return 503 and everything else works
 
-1. Clone the repository and install dependencies:
+## Getting started
 
 ```bash
 git clone https://github.com/cotneo/next-cv-app.git
 cd next-cv-app
 npm install
-```
-
-2. Create `.env.local` file:
-
-```env
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-secret-key-here
-MONGODB_URI=mongodb://localhost:27017/cv-builder
-
-# Optional: Google OAuth
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-# Required for AI features (ATS review, translate, improve)
-OPENAI_API_KEY=your-openai-api-key
-```
-
-3. Start the development server:
-
-```bash
+cp .env.example .env.local   # then fill in NEXTAUTH_SECRET and MONGODB_URI
 npm run dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open http://localhost:3000.
 
-## ✅ CI & test ortamı
+Generate a session secret with:
 
-- **Her push/PR:** GitHub Actions `main` için lint + build çalıştırır (`npm run ci`). Commit’i push etmeden önce yerel kontrol için: `npm run ci`.
-- **Canlı test:** Repo Vercel’e bağlıysa her push’ta otomatik **Preview** deployment oluşur; PR’larda ve branch’lerdeki her commit için ayrı test URL’i alırsın. Vercel Dashboard → Project → Settings → Git ile GitHub bağlantısını kontrol et.
+```bash
+openssl rand -base64 32
+```
 
-## 🎨 Tech Stack
+See [.env.example](.env.example) for every variable. The environment is validated when the server starts ([src/instrumentation.ts](src/instrumentation.ts)), so a misconfigured deployment fails immediately with a list of what is wrong rather than erroring on the first request.
 
-- **Framework**: Next.js 15 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4
-- **3D Graphics**: Three.js, @react-three/fiber, @react-three/drei
-- **Auth**: NextAuth.js v4 (JWT, Credentials + Google OAuth)
-- **Database**: MongoDB with Mongoose
-- **AI**: OpenAI API (GPT-4)
-- **PDF Export**: html2pdf.js
-- **Forms**: react-hook-form with Zod validation
-- **Notifications**: react-hot-toast
-- **UI Components**: Custom components with Tailwind CSS
+## Scripts
 
-## 📁 Project Structure
+| Command | What it does |
+|---------|--------------|
+| `npm run dev` | Development server |
+| `npm run build` / `npm start` | Production build and server |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Vitest (103 tests) |
+| `npm run test:watch` | Vitest in watch mode |
+| `npm run test:coverage` | Coverage report |
+| `npm run ci` | lint + typecheck + test + build — same as CI |
+| `npm run create-test-user` | Seeds a local test account (see [TEST_USER.md](TEST_USER.md)) |
+
+## Tech stack
+
+- **Framework** Next.js 15 (App Router), React 19
+- **Language** TypeScript (strict)
+- **Styling** Tailwind CSS v4 + a small PostCSS plugin that rewrites `oklch()` to `rgb()` so html2canvas can parse the CSS
+- **Auth** NextAuth v4 — credentials (bcrypt, cost 12) and optional Google OAuth, JWT sessions
+- **Database** MongoDB via Mongoose
+- **AI** OpenAI Chat Completions with JSON mode
+- **Validation** Zod, on every API boundary and on AI output
+- **3D** Three.js, @react-three/fiber, @react-three/drei
+- **PDF** html2pdf.js, dynamically imported so it stays out of the initial bundle
+- **Tests** Vitest
+
+---
+
+## Architecture
 
 ```
 src/
 ├── app/
-│   ├── api/
-│   │   ├── auth/
-│   │   │   ├── [...nextauth]/    # NextAuth handler
-│   │   │   └── register/         # User registration
-│   │   └── cv/
-│   │       ├── route.ts          # List and create CVs
-│   │       ├── [id]/
-│   │       │   ├── route.ts      # Get, update, delete CV
-│   │       │   └── share/        # Generate/revoke share tokens
-│   │       └── public/[token]/   # Public CV access
-│   ├── auth/                     # Login, register pages
-│   ├── dashboard/
-│   │   ├── page.tsx              # CV list
-│   │   ├── new/
-│   │   │   └── page.tsx          # Create new CV with template selection
-│   │   ├── [id]/
-│   │   │   ├── page.tsx         # CV detail/edit with template selection
-│   │   │   └── view/
-│   │   │       └── page.tsx     # CV preview and PDF export
-│   │   └── page.tsx
-│   ├── cv/[token]/               # Public CV view
-│   ├── templates/
-│   │   ├── page.tsx              # Template gallery
-│   │   └── [id]/
-│   │       └── page.tsx          # Template preview
-│   ├── pricing/                  # Pricing page
-│   ├── about/                     # About page
-│   ├── contact/                   # Contact page
-│   ├── privacy/                   # Privacy policy
-│   ├── terms/                     # Terms of service
-│   ├── faq/                       # FAQ page
-│   ├── layout.tsx                 # Root layout with Toaster
-│   └── page.tsx                   # Home page with 3D hero
+│   ├── api/                    Route handlers: session → validate → service
+│   ├── auth/                   Sign in, sign up, auth error
+│   ├── cv/[token]/             Public shared CV
+│   ├── dashboard/              CV list, editor, preview, cover letters
+│   ├── templates/              Gallery and per-template detail
+│   ├── layout.tsx              Server component: metadata, fonts
+│   ├── providers.tsx           Client providers: session, locale, toasts
+│   ├── error.tsx global-error.tsx not-found.tsx
+│   └── robots.ts sitemap.ts
 ├── components/
-│   ├── CVForm.tsx                 # Multi-step CV form
-│   ├── Hero3D.tsx                 # Three.js 3D animation
-│   ├── Navbar.tsx                 # Navigation bar
-│   ├── Footer.tsx                 # Footer component
-│   ├── ConfirmModal.tsx           # Confirmation dialog
-│   ├── cv/
-│   │   └── CVRender.tsx           # CV template renderer (16 templates)
-│   ├── templates/
-│   │   ├── TemplateThumbnail.tsx  # Template thumbnail component
-│   │   └── TemplatePreview.tsx    # Template preview component
-│   └── features/
-│       ├── FeatureCard.tsx        # Feature card component
-│       └── HowItWorksStep.tsx     # How it works step component
-├── hooks/
-│   └── useTranslation.ts          # i18n translation hook
+│   ├── CVForm.tsx              Six-step editor
+│   ├── cv/CVRender.tsx         16 template layouts
+│   ├── cv/sections.tsx         Shared section renderers
+│   └── cv/section-data.ts      Section keys, presence checks, URL guard (pure)
+├── data/templates.ts           Canonical template catalogue
+├── hooks/useTranslation.ts     Translation lookup with interpolation
 ├── i18n/
-│   ├── settings.ts                # i18n configuration
-│   └── translations/              # Translation files (en, tr, de, ru, ar, fr)
+│   ├── LocaleProvider.tsx      Interface locale + <html lang/dir>
+│   ├── settings.ts             Locales, RTL, Intl tags
+│   ├── cv-labels.ts            CV section headings per language
+│   └── translations/           en, tr, de, fr, ru, ar
 ├── lib/
-│   ├── auth.ts                    # NextAuth configuration
-│   ├── mongodb.ts                 # MongoDB connection
-│   └── openai.ts                  # OpenAI client
-├── models/
-│   ├── User.ts                    # User Mongoose model
-│   └── CV.ts                      # CV Mongoose model
-├── services/
-│   ├── cvService.ts               # CV service functions
-│   └── db.ts                      # Database utilities
-└── types/
-    └── next-auth.d.ts             # NextAuth type definitions
+│   ├── env.ts                  Zod-validated environment
+│   ├── errors.ts api.ts        ApiError + one error exit point per route
+│   ├── validation.ts           Request and AI-output schemas
+│   ├── rate-limit.ts           Fixed-window limiter
+│   ├── auth.ts mongodb.ts openai.ts site.ts
+├── models/                     User, CV, Application
+├── services/                   cvService, applicationService, userService
+├── middleware.ts               Server-side gate on /dashboard
+└── instrumentation.ts          Startup environment validation
 ```
 
-## 🔐 Authentication
+**Request flow.** Route handlers resolve the session (`requireUserId`), apply a rate limit, parse the body with a Zod schema, then call a service. Services own database access and ownership checks. Every handler funnels failures through `handleApiError`, which preserves intentional statuses and reports everything else as a generic 500 with the details logged server-side.
 
-- **Email/Password**: Register and login with email and password
-- **Google OAuth**: Optional Google authentication
-- **Protected Routes**: Dashboard and CV management require authentication
-- **JWT Sessions**: Secure session management with NextAuth.js
+**Ownership.** Every query is scoped by `{ _id, userId }`, so another user's CV is indistinguishable from a missing one.
 
-## 📡 API Overview
+**AI output.** Model responses are parsed, narrowed to a whitelist of content fields and re-validated before being written. A response that is malformed, empty or tries to set `isPublic`, `shareToken` or `atsScore` is rejected rather than persisted.
+
+---
+
+## API
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/auth/[...nextauth]` | GET, POST | NextAuth authentication handler |
-| `/api/auth/register` | POST | User registration |
-| `/api/cv` | GET | List user's CVs |
-| `/api/cv` | POST | Create new CV |
-| `/api/cv/[id]` | GET | Get CV details |
-| `/api/cv/[id]` | PUT | Update CV |
-| `/api/cv/[id]` | DELETE | Delete CV |
-| `/api/cv/[id]` | POST | AI actions: `ats-review`, `translate`, `improve` |
-| `/api/cv/[id]/share` | POST | Generate share token |
-| `/api/cv/[id]/share` | DELETE | Revoke share token |
-| `/api/cv/public/[token]` | GET | Get public CV by share token |
+| `/api/auth/[...nextauth]` | GET, POST | NextAuth handler |
+| `/api/auth/register` | POST | Register (rate limited: 10/hour/IP) |
+| `/api/cv` | GET | List the caller's CVs (photo excluded) |
+| `/api/cv` | POST | Create a CV; 402 when the quota is used up |
+| `/api/cv/[id]` | GET, PUT, DELETE | Read, update, delete |
+| `/api/cv/[id]` | POST | AI actions: `ats-review`, `translate`, `improve` (20/hour/user) |
+| `/api/cv/[id]/cover-letter` | POST | Generate and store a cover letter |
+| `/api/cv/[id]/share` | POST, DELETE | Create or revoke a share token |
+| `/api/cv/public/[token]` | GET | Public CV (120/min/IP) |
+| `/api/applications` | GET | Cover letters |
+| `/api/applications/[id]` | GET, DELETE | Read or delete a cover letter |
+| `/api/quota` | GET | `{ used, limit, remaining }` |
+| `/api/health` | GET | Liveness probe; 503 while the database is unreachable |
 
-## 🎨 CV Templates
+Errors are `{ error, code, details? }`. Clients branch on `code` (`quota_exceeded`, `validation_failed`, `rate_limited`, `ai_unavailable`, …) rather than on the message.
 
-16 professionally designed templates across 5 categories:
+## Security
 
-- **Professional**: Modern, Classic, Professional, Executive, Elegant, Corporate
-- **Minimalist**: Minimal, Clean
-- **Technical**: Technical, Developer
-- **Creative**: Creative, Artistic, Portfolio, Innovative
-- **Academic**: Academic, Scholar
+- Session-scoped queries on every read and write; 404 rather than 403 for other users' records
+- Zod validation on every request body, with per-field errors
+- URLs are restricted to `http(s)` on write **and** at render time — `javascript:` in a CV field would otherwise be stored XSS on public share pages
+- Passwords are bcrypt-hashed and `select: false`; sign-in failures are indistinguishable between unknown email and wrong password
+- Rate limits on auth, AI and write endpoints
+- Security headers and `no-store` on API responses ([next.config.ts](next.config.ts))
+- `robots.ts` keeps `/dashboard`, `/cv`, `/auth` and `/api` out of search indexes
 
-Each template supports:
-- Profile photo display
-- All CV sections (work, education, skills, languages, certifications, projects, references)
-- "Currently working/studying" indicators
-- Responsive design
-- Print/PDF optimization
+The rate limiter keeps counters in process memory, so on a multi-instance deployment the effective limit is *limit × instances*. Move it to Redis or Vercel KV if you need a global guarantee.
 
-## 🚀 Key Features Details
+No Content-Security-Policy is set: the app renders user-supplied base64 images and Next injects inline bootstrap scripts, so a useful policy needs a nonce pipeline in middleware. That is the main remaining hardening step.
 
-### Template Selection
-- Choose from 16 templates when creating a new CV
-- Change template when editing existing CV
-- Category-based filtering
-- Visual template thumbnails
-- Template preview before selection
+## Deployment
 
-### AI Features
-- **ATS Review**: Get ATS compatibility score and suggestions
-- **Translation**: Translate CV to multiple languages (English, Turkish, German, French, Russian, Arabic)
-- **Improvement**: Get AI-powered suggestions to enhance CV content
+### Vercel
+Import the repository, add the environment variables from `.env.example`, deploy. Every push gets a preview URL.
 
-### CV Sharing
-- Generate unique shareable links
-- Public CV viewing without authentication
-- Revoke sharing anytime
-- Share token-based access
+Serverless functions have an execution limit (10 s on Hobby). AI calls can exceed it on long CVs — use a plan with a longer limit or move the AI work to a queue.
 
-### PDF Export
-- Export CV as PDF
-- Print-optimized layouts
-- All templates support PDF export
-- High-quality rendering
-
-## 📝 Scripts
-
+### Docker
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
-npm run ci           # Lint + build (CI / pre-push check)
-npm run create-test-user  # Create test user (requires MongoDB)
+docker build -t cv-builder .
+docker run -p 3000:3000 --env-file .env.local cv-builder
 ```
+The image is a multi-stage `output: 'standalone'` build running as a non-root user, with a healthcheck on `/api/health`.
 
-## 🔧 Development
+### Anything else
+Node 20+, `npm ci && npm run build && npm start` behind a reverse proxy with TLS. Point your uptime monitor at `/api/health`.
 
-### Creating a Test User
+More detail: [docs/PRODUCTION_ROADMAP.md](docs/PRODUCTION_ROADMAP.md).
 
-1. Ensure MongoDB is running and configured in `.env.local`
-2. Run the test user creation script:
+## Documentation
 
-```bash
-npm run create-test-user
-```
+| File | Contents |
+|------|----------|
+| [docs/PRODUCTION_ROADMAP.md](docs/PRODUCTION_ROADMAP.md) | Deployment checklist and operations |
+| [MONGODB_SETUP.md](MONGODB_SETUP.md) | Local and hosted MongoDB setup |
+| [TEST_USER.md](TEST_USER.md) | Test account |
+| [.env.example](.env.example) | Every environment variable |
 
-See `TEST_USER.md` for test user credentials.
+## Licence
 
-### MongoDB Setup
+MIT — see [LICENSE](LICENSE).
 
-For Docker MongoDB setup, see `MONGODB_SETUP.md`.
+## Author
 
-### Dokümantasyon
-
-| Dosya | İçerik |
-|-------|--------|
-| [docs/PRODUCTION_ROADMAP.md](docs/PRODUCTION_ROADMAP.md) | Production deploy ve Vercel yol haritası |
-| [MONGODB_SETUP.md](MONGODB_SETUP.md) | MongoDB kurulumu ve test kullanıcısı script’i |
-| [TEST_USER.md](TEST_USER.md) | Test kullanıcı bilgileri ve oluşturma yöntemleri |
-
-## 📄 License
-
-MIT License – see [LICENSE](LICENSE) for details.
-
-## 👤 Author
-
-**Furkan Akar (CotNeo)**
-- GitHub: [@cotneo](https://github.com/cotneo)
-- LinkedIn: [furkanaliakar](https://www.linkedin.com/in/furkanaliakar/)
-- Website: [cotneo.com](https://www.cotneo.com)
-
-## 🙏 Acknowledgments
-
-- Next.js team for the amazing framework
-- Three.js community for 3D graphics
-- OpenAI for AI capabilities
-- All contributors and users
+**Furkan Akar (CotNeo)** — [GitHub](https://github.com/cotneo) · [LinkedIn](https://www.linkedin.com/in/furkanaliakar/) · [cotneo.com](https://www.cotneo.com)

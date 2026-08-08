@@ -1,156 +1,80 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { handleApiError, readJson, requireUserId } from '@/lib/api';
+import { enforceRateLimit } from '@/lib/rate-limit';
+import { cvActionSchema, cvUpdateSchema } from '@/lib/validation';
 import {
-  getCVById,
-  updateCV,
   deleteCV,
-  getATSReview,
-  translateCVContent,
+  getOwnedCV,
   improveCV,
+  runATSReview,
+  translateCVContent,
+  updateCV,
 } from '@/services/cvService';
-import { authOptions } from '@/lib/auth';
 
-async function assertOwnership(cvId: string, userId: string) {
-  const cv = await getCVById(cvId);
-  if (cv.userId.toString() !== userId) {
-    throw new Error('Unauthorized');
-  }
-  return cv;
-}
+type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: Request, { params }: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = await requireUserId();
     const { id } = await params;
-    const cv = await assertOwnership(id, session.user.id);
+    const cv = await getOwnedCV(id, userId);
     return NextResponse.json(cv);
   } catch (error) {
-    if ((error as Error).message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if ((error as Error).message === 'CV not found') {
-      return NextResponse.json({ error: 'CV not found' }, { status: 404 });
-    }
-    console.error('CV fetch error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch CV' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'GET /api/cv/[id]');
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function PUT(request: Request, { params }: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = await requireUserId();
+    enforceRateLimit('write', userId);
+
     const { id } = await params;
-    await assertOwnership(id, session.user.id);
-    const updates = await request.json();
-    const cv = await updateCV(id, updates);
+    const updates = cvUpdateSchema.parse(await readJson(request));
+    const cv = await updateCV(id, userId, updates);
     return NextResponse.json(cv);
   } catch (error) {
-    if ((error as Error).message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if ((error as Error).message === 'CV not found') {
-      return NextResponse.json({ error: 'CV not found' }, { status: 404 });
-    }
-    console.error('CV update error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update CV' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'PUT /api/cv/[id]');
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function DELETE(_request: Request, { params }: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const userId = await requireUserId();
+    enforceRateLimit('write', userId);
+
     const { id } = await params;
-    await assertOwnership(id, session.user.id);
-    await deleteCV(id);
+    await deleteCV(id, userId);
     return NextResponse.json({ success: true });
   } catch (error) {
-    if ((error as Error).message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if ((error as Error).message === 'CV not found') {
-      return NextResponse.json({ error: 'CV not found' }, { status: 404 });
-    }
-    console.error('CV delete error:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete CV' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'DELETE /api/cv/[id]');
   }
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+/** AI actions. Rate limited separately because each call costs real money. */
+export async function POST(request: Request, { params }: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const { id } = await params;
-    await assertOwnership(id, session.user.id);
-    const body = await request.json();
-    const action = body?.action as string;
-    const data = body?.data as { targetLanguage?: string } | undefined;
+    const userId = await requireUserId();
+    enforceRateLimit('ai', userId);
 
-    let result: unknown;
-    switch (action) {
-      case 'ats-review':
-        result = await getATSReview(id);
-        break;
-      case 'translate': {
-        const lang = data?.targetLanguage;
-        if (!lang || typeof lang !== 'string') {
-          return NextResponse.json(
-            { error: 'targetLanguage required for translate' },
-            { status: 400 }
-          );
-        }
-        result = await translateCVContent(id, lang);
-        break;
+    const { id } = await params;
+    const body = cvActionSchema.parse(await readJson(request));
+
+    switch (body.action) {
+      case 'ats-review': {
+        const review = await runATSReview(id, userId);
+        return NextResponse.json(review);
       }
-      case 'improve':
-        result = await improveCV(id);
-        break;
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+      case 'translate': {
+        const cv = await translateCVContent(id, userId, body.data.targetLanguage);
+        return NextResponse.json(cv);
+      }
+      case 'improve': {
+        const cv = await improveCV(id, userId);
+        return NextResponse.json(cv);
+      }
     }
-    return NextResponse.json(result);
   } catch (error) {
-    if ((error as Error).message === 'Unauthorized') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    if ((error as Error).message === 'CV not found') {
-      return NextResponse.json({ error: 'CV not found' }, { status: 404 });
-    }
-    console.error('CV action error:', error);
-    return NextResponse.json(
-      { error: 'Failed to perform CV action' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'POST /api/cv/[id]');
   }
 }

@@ -1,51 +1,24 @@
 import { NextResponse } from 'next/server';
-import { connectToDatabase } from '@/lib/mongodb';
-import User from '@/models/User';
-import { hash } from 'bcryptjs';
+import { ApiError, handleApiError, readJson } from '@/lib/api';
+import { clientIp, enforceRateLimit } from '@/lib/rate-limit';
+import { registerSchema } from '@/lib/validation';
+import { createCredentialsUser, findUserByEmail } from '@/services/userService';
 
 export async function POST(request: Request) {
   try {
-    const { name, email, password } = await request.json();
+    enforceRateLimit('auth', clientIp(request));
 
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: 'Tüm alanlar gerekli' },
-        { status: 400 }
-      );
+    const { name, email, password } = registerSchema.parse(await readJson(request));
+
+    if (await findUserByEmail(email)) {
+      throw new ApiError(409, 'This email address is already in use', 'email_taken');
     }
 
-    await connectToDatabase();
+    await createCredentialsUser({ name, email, password });
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return NextResponse.json(
-        { error: 'Bu email adresi zaten kullanımda' },
-        { status: 400 }
-      );
-    }
-
-    // Hash password
-    const hashedPassword = await hash(password, 12);
-
-    // Create user
-    const user = new User({
-      name,
-      email,
-      password: hashedPassword,
-    });
-
-    await user.save();
-
-    return NextResponse.json(
-      { message: 'Kullanıcı başarıyla oluşturuldu' },
-      { status: 201 }
-    );
+    // Never echo the created user back: the response would carry the hash.
+    return NextResponse.json({ success: true }, { status: 201 });
   } catch (error) {
-    console.error('Kayıt hatası:', error);
-    return NextResponse.json(
-      { error: 'Kayıt işlemi sırasında bir hata oluştu' },
-      { status: 500 }
-    );
+    return handleApiError(error, 'POST /api/auth/register');
   }
-} 
+}

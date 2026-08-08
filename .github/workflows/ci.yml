@@ -1,4 +1,4 @@
-# Her push ve PR'da lint + build çalıştırır; Vercel her push'ta preview deploy eder.
+# Lint, typecheck, test and build on every push and PR.
 name: CI
 
 on:
@@ -6,6 +6,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -25,8 +29,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
       - name: Build
         run: npm run build
         env:
-          # Build için gerekli env'ler (değerler CI'da kullanılmaz, sadece build geçsin diye)
-          SKIP_ENV_VALIDATION: 1
+          # Placeholder: the build must not need real secrets. Runtime env is
+          # validated on server startup by src/instrumentation.ts instead.
+          NEXTAUTH_SECRET: ci-placeholder-secret-value-32-chars

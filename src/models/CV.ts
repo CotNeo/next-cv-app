@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import { DEFAULT_TEMPLATE, TEMPLATE_IDS } from '@/data/templates';
+import { locales } from '@/i18n/settings';
 
 const cvSchema = new mongoose.Schema(
   {
@@ -6,10 +8,12 @@ const cvSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: 'User',
+      index: true,
     },
     title: {
       type: String,
-      required: [true, 'CV başlığı gerekli'],
+      required: [true, 'Title is required'],
+      trim: true,
     },
     personalInfo: {
       name: String,
@@ -18,7 +22,7 @@ const cvSchema = new mongoose.Schema(
       location: String,
       website: String,
       linkedin: String,
-      profilePhoto: String, // Base64 or URL
+      profilePhoto: String, // Base64 data URL or remote URL
     },
     summary: String,
     workExperience: [
@@ -78,14 +82,25 @@ const cvSchema = new mongoose.Schema(
         phone: String,
       },
     ],
+    /** 0 means "not reviewed yet"; otherwise the last AI-reported ATS score. */
     atsScore: {
       type: Number,
       default: 0,
+      min: 0,
+      max: 100,
     },
     aiSuggestions: [String],
+    atsReviewedAt: Date,
     templateId: {
       type: String,
-      default: 'modern',
+      enum: TEMPLATE_IDS,
+      default: DEFAULT_TEMPLATE,
+    },
+    /** Language the CV content is written in, used for rendered section labels. */
+    language: {
+      type: String,
+      enum: locales,
+      default: 'en',
     },
     shareToken: {
       type: String,
@@ -102,10 +117,8 @@ const cvSchema = new mongoose.Schema(
   }
 );
 
-// Create indexes
-cvSchema.index({ userId: 1 });
-cvSchema.index({ createdAt: -1 });
+cvSchema.index({ userId: 1, createdAt: -1 });
 
 const CV = mongoose.models.CV || mongoose.model('CV', cvSchema);
 
-export default CV; 
+export default CV;

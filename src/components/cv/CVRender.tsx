@@ -1,1443 +1,757 @@
 'use client';
 
-import Image from 'next/image';
-import type { TemplateVariant } from '@/components/templates/TemplateThumbnail';
 import type { CVFormData } from '@/components/CVForm';
+import {
+  ProfilePhoto,
+  Sections,
+  type RenderContext,
+  type Tone,
+} from '@/components/cv/sections';
+import {
+  ALL_SECTIONS,
+  ASIDE_SECTIONS,
+  MAIN_SECTIONS,
+  hasSection,
+  nonEmpty,
+  safeHref,
+} from '@/components/cv/section-data';
+import { DEFAULT_TEMPLATE, type TemplateVariant } from '@/data/templates';
+import { formatCVDate, getCVLabels } from '@/i18n/cv-labels';
+import { defaultLocale, textDirection, type ValidLocale } from '@/i18n/settings';
 
 interface CVRenderProps {
   data: CVFormData;
   templateId?: TemplateVariant;
   className?: string;
+  /** Language the CV content is written in; drives section labels and dates. */
+  locale?: ValidLocale;
 }
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('tr-TR', { year: 'numeric', month: 'long' });
-}
+const PAGE_STYLE = { maxWidth: '210mm', margin: '0 auto' } as const;
 
-export default function CVRender({ data, templateId = 'modern', className = '' }: CVRenderProps) {
-  const cn = `bg-white text-stone-900 ${className}`.trim();
-  const { personalInfo, summary, workExperience, education, skills, languages, certifications, projects, references } = data;
+/* -------------------------------------------------------------------------- */
+/* Typography tones                                                           */
+/* -------------------------------------------------------------------------- */
 
-  switch (templateId) {
-    case 'modern':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="h-2 bg-teal-600 w-full" />
-          <div className="p-8">
-            <div className="mb-6 flex items-start gap-6">
-              {personalInfo.profilePhoto && (
-                <div className="flex-shrink-0">
-                  <Image
-                    src={personalInfo.profilePhoto}
-                    alt={personalInfo.name || 'Profil'}
-                    width={120}
-                    height={120}
-                    className="w-30 h-30 rounded-full object-cover border-2 border-teal-600"
-                    unoptimized
-                  />
-                </div>
-              )}
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-                <div className="flex flex-wrap gap-4 text-sm text-stone-600">
-                  {personalInfo.email && <span>{personalInfo.email}</span>}
-                  {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                  {personalInfo.location && <span>{personalInfo.location}</span>}
-                  {personalInfo.website && (
-                    <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      {personalInfo.website}
-                    </a>
-                  )}
-                  {personalInfo.linkedin && (
-                    <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      LinkedIn
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-6">
-              <div className="col-span-1 space-y-4">
-                {summary && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-2">Özet</h2>
-                    <p className="text-sm text-stone-600 leading-relaxed">{summary}</p>
-                  </div>
-                )}
-                {skills.length > 0 && skills[0] && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-2">Yetenekler</h2>
-                    <ul className="space-y-1">
-                      {skills.filter(Boolean).map((skill, i) => (
-                        <li key={i} className="text-sm text-stone-600">{skill}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {languages.length > 0 && languages[0]?.language && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-2">Diller</h2>
-                    <ul className="space-y-1">
-                      {languages.filter(l => l.language).map((lang, i) => (
-                        <li key={i} className="text-sm text-stone-600">
-                          {lang.language} - {lang.level}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {certifications && certifications.length > 0 && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-2">Sertifikalar</h2>
-                    <ul className="space-y-2">
-                      {certifications.map((cert, i) => (
-                        <li key={i} className="text-sm text-stone-600">
-                          <div className="font-medium">{cert.name}</div>
-                          {cert.issuer && <div className="text-xs text-stone-500">{cert.issuer}</div>}
-                          {cert.date && <div className="text-xs text-stone-500">{formatDate(cert.date)}</div>}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div className="col-span-2 space-y-4">
-                {workExperience.length > 0 && workExperience[0]?.company && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-3">İş Deneyimi</h2>
-                    <div className="space-y-4">
-                      {workExperience.filter(we => we.company).map((exp, i) => (
-                        <div key={i}>
-                          <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                          <p className="text-sm text-stone-600">{exp.company}</p>
-                          <p className="text-xs text-stone-500">
-                            {formatDate(exp.startDate)} - {exp.isCurrent ? 'Devam ediyor' : exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                          </p>
-                          {exp.description && <p className="text-sm text-stone-600 mt-1">{exp.description}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {education.length > 0 && education[0]?.institution && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-3">Eğitim</h2>
-                    <div className="space-y-3">
-                      {education.filter(edu => edu.institution).map((edu, i) => (
-                        <div key={i}>
-                          <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                          <p className="text-sm text-stone-600">{edu.institution}</p>
-                          {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                          {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                            <p className="text-xs text-stone-500">
-                              {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {projects && projects.length > 0 && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-3">Projeler</h2>
-                    <div className="space-y-3">
-                      {projects.map((project, i) => (
-                        <div key={i}>
-                          <h3 className="font-semibold text-stone-900">{project.name}</h3>
-                          {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                          {project.technologies && project.technologies.length > 0 && (
-                            <p className="text-xs text-stone-500 mt-1">
-                              Teknolojiler: {project.technologies.join(', ')}
-                            </p>
-                          )}
-                          {project.url && (
-                            <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">
-                              {project.url}
-                            </a>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {references && references.length > 0 && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-teal-700 uppercase mb-3">Referanslar</h2>
-                    <div className="space-y-2">
-                      {references.map((ref, i) => (
-                        <div key={i} className="text-sm">
-                          <div className="font-medium text-stone-900">{ref.name}</div>
-                          <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                          {ref.email && <div className="text-xs text-stone-500">{ref.email}</div>}
-                          {ref.phone && <div className="text-xs text-stone-500">{ref.phone}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    case 'classic':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="flex">
-            <div className="w-16 bg-teal-700 text-white p-6">
-              <div className="mb-8">
-                {personalInfo.profilePhoto && (
-                  <div className="mb-4 flex justify-center">
-                    <Image
-                      src={personalInfo.profilePhoto}
-                      alt={personalInfo.name || 'Profil'}
-                      width={100}
-                      height={100}
-                      className="w-25 h-25 rounded-full object-cover border-2 border-white"
-                      unoptimized
-                    />
-                  </div>
-                )}
-                <h1 className="text-2xl font-bold mb-4">{personalInfo.name || 'Ad Soyad'}</h1>
-                <div className="space-y-2 text-sm">
-                  {personalInfo.email && <p>{personalInfo.email}</p>}
-                  {personalInfo.phone && <p>{personalInfo.phone}</p>}
-                  {personalInfo.location && <p>{personalInfo.location}</p>}
-                  {personalInfo.website && (
-                    <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="underline">
-                      Website
-                    </a>
-                  )}
-                  {personalInfo.linkedin && (
-                    <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="underline">
-                      LinkedIn
-                    </a>
-                  )}
-                </div>
-              </div>
-              {summary && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold uppercase mb-2">Özet</h2>
-                  <p className="text-sm leading-relaxed">{summary}</p>
-                </div>
-              )}
-              {skills.length > 0 && skills[0] && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold uppercase mb-2">Yetenekler</h2>
-                  <ul className="space-y-1 text-sm">
-                    {skills.filter(Boolean).map((skill, i) => (
-                      <li key={i}>{skill}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {certifications && certifications.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold uppercase mb-2">Sertifikalar</h2>
-                  <ul className="space-y-1 text-sm">
-                    {certifications.map((cert, i) => (
-                      <li key={i}>
-                        <div className="font-medium">{cert.name}</div>
-                        {cert.issuer && <div className="text-xs opacity-90">{cert.issuer}</div>}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-            <div className="flex-1 p-6 space-y-6">
-              {workExperience.length > 0 && workExperience[0]?.company && (
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900 mb-3 border-b-2 border-stone-200 pb-1">İş Deneyimi</h2>
-                  <div className="space-y-4">
-                    {workExperience.filter(we => we.company).map((exp, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                        <p className="text-sm text-stone-600">{exp.company}</p>
-                        <p className="text-xs text-stone-500">
-                          {formatDate(exp.startDate)} - {exp.isCurrent ? 'Devam ediyor' : exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                        </p>
-                        {exp.description && <p className="text-sm text-stone-600 mt-1">{exp.description}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {education.length > 0 && education[0]?.institution && (
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900 mb-3 border-b-2 border-stone-200 pb-1">Eğitim</h2>
-                  <div className="space-y-3">
-                    {education.filter(edu => edu.institution).map((edu, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                        <p className="text-sm text-stone-600">{edu.institution}</p>
-                        {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                        {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                          <p className="text-xs text-stone-500">
-                            {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {projects && projects.length > 0 && (
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900 mb-3 border-b-2 border-stone-200 pb-1">Projeler</h2>
-                  <div className="space-y-3">
-                    {projects.map((project, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900">{project.name}</h3>
-                        {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                        {project.url && (
-                          <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">
-                            {project.url}
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {references && references.length > 0 && (
-                <div>
-                  <h2 className="text-lg font-semibold text-stone-900 mb-3 border-b-2 border-stone-200 pb-1">Referanslar</h2>
-                  <div className="space-y-2">
-                    {references.map((ref, i) => (
-                      <div key={i} className="text-sm">
-                        <div className="font-medium text-stone-900">{ref.name}</div>
-                        <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                        {ref.email && <div className="text-xs text-stone-500">{ref.email}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    case 'minimal':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="p-12 text-center">
-            {personalInfo.profilePhoto && (
-              <div className="mb-6 flex justify-center">
-                <Image
-                  src={personalInfo.profilePhoto}
-                  alt={personalInfo.name || 'Profil'}
-                  width={120}
-                  height={120}
-                  className="w-30 h-30 rounded-full object-cover border-2 border-stone-300 mx-auto"
-                  unoptimized
-                />
-              </div>
-            )}
-            <h1 className="text-4xl font-light text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-            <div className="flex justify-center gap-4 text-sm text-stone-500 mb-8">
-              {personalInfo.email && <span>{personalInfo.email}</span>}
-              {personalInfo.phone && <span>{personalInfo.phone}</span>}
-              {personalInfo.website && (
-                <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                  Website
-                </a>
-              )}
-              {personalInfo.linkedin && (
-                <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                  LinkedIn
-                </a>
-              )}
-            </div>
-            <div className="h-px bg-stone-200 w-full mb-8" />
-            {summary && (
-              <div className="mb-8 text-stone-600 leading-relaxed max-w-2xl mx-auto">
-                <p>{summary}</p>
-              </div>
-            )}
-            <div className="space-y-6 text-left max-w-2xl mx-auto">
-              {workExperience.length > 0 && workExperience[0]?.company && (
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900 uppercase mb-3">İş Deneyimi</h2>
-                  <div className="space-y-4">
-                    {workExperience.filter(we => we.company).map((exp, i) => (
-                      <div key={i}>
-                        <h3 className="font-medium text-stone-900">{exp.position} - {exp.company}</h3>
-                        <p className="text-xs text-stone-500">
-                          {formatDate(exp.startDate)} - {exp.isCurrent ? 'Devam ediyor' : exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {education.length > 0 && education[0]?.institution && (
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900 uppercase mb-3">Eğitim</h2>
-                  <div className="space-y-3">
-                    {education.filter(edu => edu.institution).map((edu, i) => (
-                      <div key={i}>
-                        <h3 className="font-medium text-stone-900">{edu.degree}</h3>
-                        <p className="text-sm text-stone-600">{edu.institution}</p>
-                        {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                        {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                          <p className="text-xs text-stone-500">
-                            {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {certifications && certifications.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900 uppercase mb-3">Sertifikalar</h2>
-                  <div className="space-y-2">
-                    {certifications.map((cert, i) => (
-                      <div key={i}>
-                        <div className="font-medium text-stone-900">{cert.name}</div>
-                        {cert.issuer && <div className="text-xs text-stone-500">{cert.issuer}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {projects && projects.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900 uppercase mb-3">Projeler</h2>
-                  <div className="space-y-3">
-                    {projects.map((project, i) => (
-                      <div key={i}>
-                        <h3 className="font-medium text-stone-900">{project.name}</h3>
-                        {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                        {project.url && (
-                          <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">
-                            {project.url}
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {references && references.length > 0 && (
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-900 uppercase mb-3">Referanslar</h2>
-                  <div className="space-y-2">
-                    {references.map((ref, i) => (
-                      <div key={i} className="text-sm">
-                        <div className="font-medium text-stone-900">{ref.name}</div>
-                        <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    case 'professional':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="p-8">
-            <div className="flex items-start gap-6 mb-6">
-              {personalInfo.profilePhoto && (
-                <div className="flex-shrink-0">
-                  <Image
-                    src={personalInfo.profilePhoto}
-                    alt={personalInfo.name || 'Profil'}
-                    width={100}
-                    height={100}
-                    className="w-25 h-25 rounded-full object-cover border-2 border-stone-300"
-                    unoptimized
-                  />
-                </div>
-              )}
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-                <div className="flex flex-wrap gap-4 text-sm text-stone-600">
-                  {personalInfo.email && <span>{personalInfo.email}</span>}
-                  {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                  {personalInfo.location && <span>{personalInfo.location}</span>}
-                  {personalInfo.website && (
-                    <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      Website
-                    </a>
-                  )}
-                  {personalInfo.linkedin && (
-                    <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      LinkedIn
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="h-px bg-stone-300 mb-6" />
-            {summary && (
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-stone-900 mb-2">Özet</h2>
-                <p className="text-stone-600">{summary}</p>
-              </div>
-            )}
-            {workExperience.length > 0 && workExperience[0]?.company && (
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-stone-900 mb-3 border-b border-stone-300 pb-1">İş Deneyimi</h2>
-                <div className="space-y-4">
-                  {workExperience.filter(we => we.company).map((exp, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                      <p className="text-sm text-stone-600">{exp.company}</p>
-                      <p className="text-xs text-stone-500">
-                        {formatDate(exp.startDate)} - {exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                      </p>
-                      {exp.description && <p className="text-sm text-stone-600 mt-1">{exp.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {education.length > 0 && education[0]?.institution && (
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-stone-900 mb-3 border-b border-stone-300 pb-1">Eğitim</h2>
-                <div className="space-y-3">
-                  {education.filter(edu => edu.institution).map((edu, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                      <p className="text-sm text-stone-600">{edu.institution}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {skills.length > 0 && skills[0] && (
-              <div>
-                <h2 className="text-lg font-semibold text-stone-900 mb-3 border-b border-stone-300 pb-1">Yetenekler</h2>
-                <div className="flex flex-wrap gap-2">
-                  {skills.filter(Boolean).map((skill, i) => (
-                    <span key={i} className="px-3 py-1 bg-stone-100 text-stone-700 rounded text-sm">{skill}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    case 'executive':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="h-3 bg-stone-900 w-full" />
-          <div className="p-8">
-            <div className="text-center mb-8">
-              {personalInfo.profilePhoto && (
-                <div className="mb-4 flex justify-center">
-                  <Image
-                    src={personalInfo.profilePhoto}
-                    alt={personalInfo.name || 'Profil'}
-                    width={120}
-                    height={120}
-                    className="w-30 h-30 rounded-full object-cover border-4 border-stone-900 mx-auto"
-                    unoptimized
-                  />
-                </div>
-              )}
-              <h1 className="text-4xl font-bold text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-              <div className="flex justify-center gap-4 text-sm text-stone-600">
-                {personalInfo.email && <span>{personalInfo.email}</span>}
-                {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                {personalInfo.website && (
-                  <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                    Website
-                  </a>
-                )}
-                {personalInfo.linkedin && (
-                  <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                    LinkedIn
-                  </a>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                {summary && (
-                  <div className="mb-6">
-                    <h2 className="text-sm font-semibold text-stone-700 uppercase mb-2">Özet</h2>
-                    <p className="text-sm text-stone-600 leading-relaxed">{summary}</p>
-                  </div>
-                )}
-                {skills.length > 0 && skills[0] && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-stone-700 uppercase mb-2">Yetenekler</h2>
-                    <ul className="space-y-1 text-sm text-stone-600">
-                      {skills.filter(Boolean).map((skill, i) => (
-                        <li key={i}>{skill}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              <div>
-                {workExperience.length > 0 && workExperience[0]?.company && (
-                  <div className="mb-6">
-                    <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">İş Deneyimi</h2>
-                    <div className="space-y-4">
-                      {workExperience.filter(we => we.company).map((exp, i) => (
-                        <div key={i}>
-                          <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                          <p className="text-sm text-stone-600">{exp.company}</p>
-                          <p className="text-xs text-stone-500">
-                            {formatDate(exp.startDate)} - {exp.isCurrent ? 'Devam ediyor' : exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {education.length > 0 && education[0]?.institution && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Eğitim</h2>
-                    <div className="space-y-3">
-                      {education.filter(edu => edu.institution).map((edu, i) => (
-                        <div key={i}>
-                          <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                          <p className="text-sm text-stone-600">{edu.institution}</p>
-                          {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                          {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                            <p className="text-xs text-stone-500">
-                              {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {certifications && certifications.length > 0 && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Sertifikalar</h2>
-                    <div className="space-y-2">
-                      {certifications.map((cert, i) => (
-                        <div key={i} className="text-sm">
-                          <div className="font-medium text-stone-900">{cert.name}</div>
-                          {cert.issuer && <div className="text-stone-600">{cert.issuer}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {projects && projects.length > 0 && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Projeler</h2>
-                    <div className="space-y-3">
-                      {projects.map((project, i) => (
-                        <div key={i}>
-                          <h3 className="font-semibold text-stone-900">{project.name}</h3>
-                          {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {references && references.length > 0 && (
-                  <div>
-                    <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Referanslar</h2>
-                    <div className="space-y-2">
-                      {references.map((ref, i) => (
-                        <div key={i} className="text-sm">
-                          <div className="font-medium text-stone-900">{ref.name}</div>
-                          <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    case 'technical':
-    case 'developer':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="p-8 bg-stone-50">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h1 className="text-3xl font-bold text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-                <div className="text-sm text-stone-600">
-                  {personalInfo.email && <p>{personalInfo.email}</p>}
-                  {personalInfo.phone && <p>{personalInfo.phone}</p>}
-                  {personalInfo.website && (
-                    <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      {personalInfo.website}
-                    </a>
-                  )}
-                  {personalInfo.linkedin && (
-                    <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      LinkedIn
-                    </a>
-                  )}
-                </div>
-              </div>
-              {skills.length > 0 && skills[0] && (
-                <div className="flex flex-wrap gap-2 max-w-xs">
-                  {skills.filter(Boolean).slice(0, 6).map((skill, i) => (
-                    <span key={i} className="px-2 py-1 bg-teal-600 text-white text-xs rounded">{skill}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-            {summary && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-2">Özet</h2>
-                <p className="text-sm text-stone-600">{summary}</p>
-              </div>
-            )}
-            {workExperience.length > 0 && workExperience[0]?.company && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">İş Deneyimi</h2>
-                <div className="space-y-4">
-                  {workExperience.filter(we => we.company).map((exp, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{exp.position} - {exp.company}</h3>
-                      <p className="text-xs text-stone-500">
-                        {formatDate(exp.startDate)} - {exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                      </p>
-                      {exp.description && <p className="text-sm text-stone-600 mt-1">{exp.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {education.length > 0 && education[0]?.institution && (
-              <div>
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Eğitim</h2>
-                <div className="space-y-2">
-                  {education.filter(edu => edu.institution).map((edu, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                      <p className="text-sm text-stone-600">{edu.institution}</p>
-                      {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                      {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                        <p className="text-xs text-stone-500">
-                          {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {certifications && certifications.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Sertifikalar</h2>
-                <div className="space-y-2">
-                  {certifications.map((cert, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="font-medium text-stone-900">{cert.name}</div>
-                      {cert.issuer && <div className="text-stone-600">{cert.issuer}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {projects && projects.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Projeler</h2>
-                <div className="space-y-3">
-                  {projects.map((project, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{project.name}</h3>
-                      {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                      {project.url && (
-                        <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">
-                          {project.url}
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {references && references.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Referanslar</h2>
-                <div className="space-y-2">
-                  {references.map((ref, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="font-medium text-stone-900">{ref.name}</div>
-                      <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                      {ref.email && <div className="text-xs text-stone-500">{ref.email}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    case 'elegant':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="flex">
-            <div className="w-20 bg-stone-100 flex-shrink-0 p-4">
-              {personalInfo.profilePhoto && (
-                <div className="mb-4">
-                  <Image
-                    src={personalInfo.profilePhoto}
-                    alt={personalInfo.name || 'Profil'}
-                    width={120}
-                    height={120}
-                    className="w-full rounded-full object-cover border-2 border-stone-300"
-                    unoptimized
-                  />
-                </div>
-              )}
-            </div>
-            <div className="flex-1 p-8 border-l border-stone-200">
-              <h1 className="text-3xl font-light text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-              <div className="flex flex-wrap gap-4 text-sm text-stone-500 mb-6">
-                {personalInfo.email && <span>{personalInfo.email}</span>}
-                {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                {personalInfo.website && (
-                  <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                    Website
-                  </a>
-                )}
-                {personalInfo.linkedin && (
-                  <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                    LinkedIn
-                  </a>
-                )}
-              </div>
-              {summary && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide mb-2">Özet</h2>
-                  <p className="text-sm text-stone-600 leading-relaxed">{summary}</p>
-                </div>
-              )}
-              {workExperience.length > 0 && workExperience[0]?.company && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide mb-3 border-b border-stone-200 pb-1">İş Deneyimi</h2>
-                  <div className="space-y-4">
-                    {workExperience.filter(we => we.company).map((exp, i) => (
-                      <div key={i}>
-                        <h3 className="font-medium text-stone-900">{exp.position}</h3>
-                        <p className="text-sm text-stone-600">{exp.company}</p>
-                        <p className="text-xs text-stone-400">
-                          {formatDate(exp.startDate)} - {exp.isCurrent ? 'Devam ediyor' : exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {education.length > 0 && education[0]?.institution && (
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide mb-3 border-b border-stone-200 pb-1">Eğitim</h2>
-                  <div className="space-y-3">
-                    {education.filter(edu => edu.institution).map((edu, i) => (
-                      <div key={i}>
-                        <h3 className="font-medium text-stone-900">{edu.degree}</h3>
-                        <p className="text-sm text-stone-600">{edu.institution}</p>
-                        {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                        {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                          <p className="text-xs text-stone-500">
-                            {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {certifications && certifications.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide mb-3 border-b border-stone-200 pb-1">Sertifikalar</h2>
-                  <div className="space-y-2">
-                    {certifications.map((cert, i) => (
-                      <div key={i} className="text-sm">
-                        <div className="font-medium text-stone-900">{cert.name}</div>
-                        {cert.issuer && <div className="text-stone-600">{cert.issuer}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {projects && projects.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide mb-3 border-b border-stone-200 pb-1">Projeler</h2>
-                  <div className="space-y-3">
-                    {projects.map((project, i) => (
-                      <div key={i}>
-                        <h3 className="font-medium text-stone-900">{project.name}</h3>
-                        {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                        {project.url && (
-                          <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-xs text-teal-600 hover:underline">
-                            {project.url}
-                          </a>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {references && references.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase tracking-wide mb-3 border-b border-stone-200 pb-1">Referanslar</h2>
-                  <div className="space-y-2">
-                    {references.map((ref, i) => (
-                      <div key={i} className="text-sm">
-                        <div className="font-medium text-stone-900">{ref.name}</div>
-                        <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                        {ref.email && <div className="text-xs text-stone-500">{ref.email}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    case 'corporate':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="p-8">
-            <h1 className="text-2xl font-bold text-stone-900 mb-1">{personalInfo.name || 'Ad Soyad'}</h1>
-            <div className="text-sm text-stone-500 mb-6">
-              {personalInfo.email && <span>{personalInfo.email}</span>}
-              {personalInfo.phone && <span className="mx-2">•</span>}
-              {personalInfo.phone && <span>{personalInfo.phone}</span>}
-              {personalInfo.website && (
-                <>
-                  <span className="mx-2">•</span>
-                  <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                    Website
-                  </a>
-                </>
-              )}
-              {personalInfo.linkedin && (
-                <>
-                  <span className="mx-2">•</span>
-                  <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                    LinkedIn
-                  </a>
-                </>
-              )}
-            </div>
-            <div className="h-px bg-stone-300 mb-4" />
-            {summary && (
-              <div className="mb-6">
-                <h2 className="text-base font-semibold text-stone-900 mb-2">Özet</h2>
-                <p className="text-sm text-stone-600">{summary}</p>
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-6">
-              {workExperience.length > 0 && workExperience[0]?.company && (
-                <div>
-                  <h2 className="text-base font-semibold text-stone-900 mb-3 border-b border-stone-300 pb-1">İş Deneyimi</h2>
-                  <div className="space-y-3">
-                    {workExperience.filter(we => we.company).map((exp, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900 text-sm">{exp.position}</h3>
-                        <p className="text-xs text-stone-600">{exp.company}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {education.length > 0 && education[0]?.institution && (
-                <div>
-                  <h2 className="text-base font-semibold text-stone-900 mb-3 border-b border-stone-300 pb-1">Eğitim</h2>
-                  <div className="space-y-3">
-                    {education.filter(edu => edu.institution).map((edu, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900 text-sm">{edu.degree}</h3>
-                        <p className="text-xs text-stone-600">{edu.institution}</p>
-                        {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                        {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                          <p className="text-xs text-stone-500">
-                            {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            {skills.length > 0 && skills[0] && (
-              <div className="mt-6">
-                <h2 className="text-base font-semibold text-stone-900 mb-2 border-b border-stone-300 pb-1">Yetenekler</h2>
-                <div className="grid grid-cols-3 gap-2">
-                  {skills.filter(Boolean).map((skill, i) => (
-                    <span key={i} className="text-xs text-stone-600">{skill}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {certifications && certifications.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-base font-semibold text-stone-900 mb-2 border-b border-stone-300 pb-1">Sertifikalar</h2>
-                <div className="space-y-2">
-                  {certifications.map((cert, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="font-medium text-stone-900">{cert.name}</div>
-                      {cert.issuer && <div className="text-xs text-stone-600">{cert.issuer}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {projects && projects.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-base font-semibold text-stone-900 mb-2 border-b border-stone-300 pb-1">Projeler</h2>
-                <div className="space-y-2">
-                  {projects.map((project, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="font-medium text-stone-900">{project.name}</div>
-                      {project.description && <div className="text-xs text-stone-600">{project.description}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {references && references.length > 0 && (
-              <div className="mt-6">
-                <h2 className="text-base font-semibold text-stone-900 mb-2 border-b border-stone-300 pb-1">Referanslar</h2>
-                <div className="space-y-2">
-                  {references.map((ref, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="font-medium text-stone-900">{ref.name}</div>
-                      <div className="text-xs text-stone-600">{ref.position} - {ref.company}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    case 'clean':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="p-12">
-            <div className="text-center mb-10">
-              <h1 className="text-4xl font-light text-stone-900 mb-3">{personalInfo.name || 'Ad Soyad'}</h1>
-              <div className="flex justify-center gap-6 text-sm text-stone-500">
-                {personalInfo.email && <span>{personalInfo.email}</span>}
-                {personalInfo.phone && <span>{personalInfo.phone}</span>}
-              </div>
-            </div>
-            <div className="h-px bg-stone-200 w-3/4 mx-auto mb-8" />
-            {summary && (
-              <div className="mb-8 text-center max-w-xl mx-auto">
-                <p className="text-stone-600 leading-relaxed">{summary}</p>
-              </div>
-            )}
-            <div className="space-y-8 max-w-2xl mx-auto">
-              {workExperience.length > 0 && workExperience[0]?.company && (
-                <div>
-                  <h2 className="text-xs font-semibold text-stone-900 uppercase tracking-widest mb-4 text-center">İş Deneyimi</h2>
-                  <div className="space-y-5">
-                    {workExperience.filter(we => we.company).map((exp, i) => (
-                      <div key={i} className="text-center">
-                        <h3 className="font-medium text-stone-900">{exp.position}</h3>
-                        <p className="text-sm text-stone-500">{exp.company}</p>
-                        <p className="text-xs text-stone-400 mt-1">
-                          {formatDate(exp.startDate)} - {exp.isCurrent ? 'Devam ediyor' : exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {education.length > 0 && education[0]?.institution && (
-                <div>
-                  <h2 className="text-xs font-semibold text-stone-900 uppercase tracking-widest mb-4 text-center">Eğitim</h2>
-                  <div className="space-y-4">
-                    {education.filter(edu => edu.institution).map((edu, i) => (
-                      <div key={i} className="text-center">
-                        <h3 className="font-medium text-stone-900">{edu.degree}</h3>
-                        <p className="text-sm text-stone-500">{edu.institution}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    case 'creative':
-    case 'artistic':
-    case 'innovative':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="p-8">
-            <div className="flex gap-4 mb-6">
-              {personalInfo.profilePhoto && (
-                <div className="flex-shrink-0">
-                  <Image
-                    src={personalInfo.profilePhoto}
-                    alt={personalInfo.name || 'Profil'}
-                    width={80}
-                    height={80}
-                    className="w-20 h-20 rounded-full object-cover border-2 border-teal-500"
-                    unoptimized
-                  />
-                </div>
-              )}
-              <div className="w-2 bg-teal-500 rounded-full flex-shrink-0" />
-              <div className="flex-1">
-                <h1 className="text-3xl font-bold text-stone-900 mb-1">{personalInfo.name || 'Ad Soyad'}</h1>
-                <div className="text-sm text-stone-500">
-                  {personalInfo.email && <span>{personalInfo.email}</span>}
-                  {personalInfo.phone && <span className="mx-2">•</span>}
-                  {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                  {personalInfo.website && (
-                    <>
-                      <span className="mx-2">•</span>
-                      <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                        Website
-                      </a>
-                    </>
-                  )}
-                  {personalInfo.linkedin && (
-                    <>
-                      <span className="mx-2">•</span>
-                      <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                        LinkedIn
-                      </a>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-            {summary && (
-              <div className="mb-6 border-l-2 border-stone-200 pl-4">
-                <p className="text-stone-600 leading-relaxed">{summary}</p>
-              </div>
-            )}
-            {workExperience.length > 0 && workExperience[0]?.company && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-900 uppercase mb-3">İş Deneyimi</h2>
-                <div className="space-y-4">
-                  {workExperience.filter(we => we.company).map((exp, i) => (
-                    <div key={i} className="border-l-2 border-teal-200 pl-4">
-                      <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                      <p className="text-sm text-stone-600">{exp.company}</p>
-                      <p className="text-xs text-stone-500">
-                        {formatDate(exp.startDate)} - {exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {education.length > 0 && education[0]?.institution && (
-              <div>
-                <h2 className="text-sm font-semibold text-stone-900 uppercase mb-3">Eğitim</h2>
-                <div className="space-y-3">
-                  {education.filter(edu => edu.institution).map((edu, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                      <p className="text-sm text-stone-600">{edu.institution}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    case 'portfolio':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="flex">
-            <div className="w-32 bg-stone-300 flex-shrink-0" />
-            <div className="flex-1 p-8">
-              <h1 className="text-3xl font-bold text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-              <div className="text-sm text-stone-600 mb-6">
-                {personalInfo.email && <p>{personalInfo.email}</p>}
-                {personalInfo.phone && <p>{personalInfo.phone}</p>}
-              </div>
-              {summary && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase mb-2">Özet</h2>
-                  <p className="text-sm text-stone-600 leading-relaxed">{summary}</p>
-                </div>
-              )}
-              {workExperience.length > 0 && workExperience[0]?.company && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">İş Deneyimi</h2>
-                  <div className="space-y-4">
-                    {workExperience.filter(we => we.company).map((exp, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                        <p className="text-sm text-stone-600">{exp.company}</p>
-                        <p className="text-xs text-stone-500">
-                          {formatDate(exp.startDate)} - {exp.isCurrent ? 'Devam ediyor' : exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {education.length > 0 && education[0]?.institution && (
-                <div>
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Eğitim</h2>
-                  <div className="space-y-3">
-                    {education.filter(edu => edu.institution).map((edu, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                        <p className="text-sm text-stone-600">{edu.institution}</p>
-                        {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                        {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                          <p className="text-xs text-stone-500">
-                            {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {certifications && certifications.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Sertifikalar</h2>
-                  <div className="space-y-2">
-                    {certifications.map((cert, i) => (
-                      <div key={i} className="text-sm">
-                        <div className="font-medium text-stone-900">{cert.name}</div>
-                        {cert.issuer && <div className="text-stone-600">{cert.issuer}</div>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {projects && projects.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Projeler</h2>
-                  <div className="space-y-3">
-                    {projects.map((project, i) => (
-                      <div key={i}>
-                        <h3 className="font-semibold text-stone-900">{project.name}</h3>
-                        {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {references && references.length > 0 && (
-                <div className="mb-6">
-                  <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3">Referanslar</h2>
-                  <div className="space-y-2">
-                    {references.map((ref, i) => (
-                      <div key={i} className="text-sm">
-                        <div className="font-medium text-stone-900">{ref.name}</div>
-                        <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    case 'academic':
-    case 'scholar':
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="p-8">
-            <div className="text-center mb-8">
-              {personalInfo.profilePhoto && (
-                <div className="mb-4 flex justify-center">
-                  <Image
-                    src={personalInfo.profilePhoto}
-                    alt={personalInfo.name || 'Profil'}
-                    width={120}
-                    height={120}
-                    className="w-30 h-30 rounded-full object-cover border-2 border-stone-300 mx-auto"
-                    unoptimized
-                  />
-                </div>
-              )}
-              <h1 className="text-3xl font-bold text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-              <div className="text-sm text-stone-500">
-                {personalInfo.email && <span>{personalInfo.email}</span>}
-                {personalInfo.phone && <span className="mx-2">•</span>}
-                {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                {personalInfo.website && (
-                  <>
-                    <span className="mx-2">•</span>
-                    <a href={personalInfo.website} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      Website
-                    </a>
-                  </>
-                )}
-                {personalInfo.linkedin && (
-                  <>
-                    <span className="mx-2">•</span>
-                    <a href={personalInfo.linkedin} target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:underline">
-                      LinkedIn
-                    </a>
-                  </>
-                )}
-              </div>
-            </div>
-            <div className="h-px bg-stone-300 mb-6" />
-            {summary && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-2">Özet</h2>
-                <p className="text-sm text-stone-600 leading-relaxed">{summary}</p>
-              </div>
-            )}
-            {education.length > 0 && education[0]?.institution && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3 border-b border-stone-200 pb-1">Eğitim</h2>
-                <div className="space-y-3">
-                  {education.filter(edu => edu.institution).map((edu, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                      <p className="text-sm text-stone-600">{edu.institution}</p>
-                      {edu.field && <p className="text-xs text-stone-500">{edu.field}</p>}
-                      {(edu.startDate || edu.endDate || edu.isCurrent) && (
-                        <p className="text-xs text-stone-500">
-                          {edu.startDate ? formatDate(edu.startDate) : ''} - {edu.isCurrent ? 'Devam ediyor' : edu.endDate ? formatDate(edu.endDate) : ''}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {workExperience.length > 0 && workExperience[0]?.company && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3 border-b border-stone-200 pb-1">İş Deneyimi</h2>
-                <div className="space-y-4">
-                  {workExperience.filter(we => we.company).map((exp, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                      <p className="text-sm text-stone-600">{exp.company}</p>
-                      <p className="text-xs text-stone-500">
-                        {formatDate(exp.startDate)} - {exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                      </p>
-                      {exp.description && <p className="text-sm text-stone-600 mt-1">{exp.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {skills.length > 0 && skills[0] && (
-              <div>
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3 border-b border-stone-200 pb-1">Yetenekler</h2>
-                <ul className="space-y-1 text-sm text-stone-600">
-                  {skills.filter(Boolean).map((skill, i) => (
-                    <li key={i}>{skill}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {certifications && certifications.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3 border-b border-stone-200 pb-1">Sertifikalar</h2>
-                <div className="space-y-2">
-                  {certifications.map((cert, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="font-medium text-stone-900">{cert.name}</div>
-                      {cert.issuer && <div className="text-stone-600">{cert.issuer}</div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {projects && projects.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3 border-b border-stone-200 pb-1">Projeler</h2>
-                <div className="space-y-3">
-                  {projects.map((project, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{project.name}</h3>
-                      {project.description && <p className="text-sm text-stone-600 mt-1">{project.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {references && references.length > 0 && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-stone-700 uppercase mb-3 border-b border-stone-200 pb-1">Referanslar</h2>
-                <div className="space-y-2">
-                  {references.map((ref, i) => (
-                    <div key={i} className="text-sm">
-                      <div className="font-medium text-stone-900">{ref.name}</div>
-                      <div className="text-stone-600">{ref.position} - {ref.company}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
-    default:
-      return (
-        <div className={cn} style={{ maxWidth: '210mm', margin: '0 auto' }}>
-          <div className="h-2 bg-teal-600 w-full" />
-          <div className="p-8">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-stone-900 mb-2">{personalInfo.name || 'Ad Soyad'}</h1>
-              <div className="flex flex-wrap gap-4 text-sm text-stone-600">
-                {personalInfo.email && <span>{personalInfo.email}</span>}
-                {personalInfo.phone && <span>{personalInfo.phone}</span>}
-                {personalInfo.location && <span>{personalInfo.location}</span>}
-              </div>
-            </div>
-            {summary && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-teal-700 uppercase mb-2">Özet</h2>
-                <p className="text-sm text-stone-600 leading-relaxed">{summary}</p>
-              </div>
-            )}
-            {workExperience.length > 0 && workExperience[0]?.company && (
-              <div className="mb-6">
-                <h2 className="text-sm font-semibold text-teal-700 uppercase mb-3">İş Deneyimi</h2>
-                <div className="space-y-4">
-                  {workExperience.filter(we => we.company).map((exp, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{exp.position}</h3>
-                      <p className="text-sm text-stone-600">{exp.company}</p>
-                      <p className="text-xs text-stone-500">
-                        {formatDate(exp.startDate)} - {exp.endDate ? formatDate(exp.endDate) : 'Devam ediyor'}
-                      </p>
-                      {exp.description && <p className="text-sm text-stone-600 mt-1">{exp.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {education.length > 0 && education[0]?.institution && (
-              <div>
-                <h2 className="text-sm font-semibold text-teal-700 uppercase mb-3">Eğitim</h2>
-                <div className="space-y-3">
-                  {education.filter(edu => edu.institution).map((edu, i) => (
-                    <div key={i}>
-                      <h3 className="font-semibold text-stone-900">{edu.degree}</h3>
-                      <p className="text-sm text-stone-600">{edu.institution}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      );
+const tealTone: Tone = {
+  heading: 'text-sm font-semibold text-teal-700 uppercase tracking-wide mb-2',
+  title: 'font-semibold text-stone-900',
+  subtitle: 'text-sm text-stone-600',
+  meta: 'text-xs text-stone-500',
+  body: 'text-sm text-stone-600 leading-relaxed',
+  link: 'text-teal-700 hover:underline',
+  chip: 'px-2 py-1 bg-teal-600 text-white text-xs rounded',
+};
+
+const stoneTone: Tone = {
+  ...tealTone,
+  heading: 'text-sm font-semibold text-stone-700 uppercase tracking-wide mb-2',
+  link: 'text-teal-600 hover:underline',
+  chip: 'px-2 py-1 bg-stone-200 text-stone-700 text-xs rounded',
+};
+
+const borderedTone: Tone = {
+  ...stoneTone,
+  heading:
+    'text-lg font-semibold text-stone-900 mb-3 border-b border-stone-300 pb-1',
+};
+
+const compactBorderedTone: Tone = {
+  ...stoneTone,
+  heading:
+    'text-base font-semibold text-stone-900 mb-2 border-b border-stone-300 pb-1',
+  itemGap: 'space-y-3',
+};
+
+const centeredTone: Tone = {
+  ...stoneTone,
+  heading:
+    'text-xs font-semibold text-stone-900 uppercase tracking-widest mb-4 text-center',
+  title: 'font-medium text-stone-900',
+  subtitle: 'text-sm text-stone-500',
+  meta: 'text-xs text-stone-400',
+  body: 'text-sm text-stone-600 leading-relaxed',
+  align: 'text-center',
+  itemGap: 'space-y-5',
+};
+
+const elegantTone: Tone = {
+  ...stoneTone,
+  heading:
+    'text-sm font-semibold text-stone-700 uppercase tracking-widest mb-3 border-b border-stone-200 pb-1',
+  title: 'font-medium text-stone-900',
+};
+
+const monoTone: Tone = {
+  ...stoneTone,
+  heading:
+    'text-sm font-mono font-semibold text-stone-700 uppercase tracking-wider mb-2',
+  meta: 'text-xs font-mono text-stone-500',
+  skillStyle: 'chips',
+  chip: 'px-2 py-1 bg-stone-800 text-white text-xs font-mono rounded',
+};
+
+const technicalTone: Tone = {
+  ...stoneTone,
+  skillStyle: 'chips',
+  chip: 'px-2 py-1 bg-teal-600 text-white text-xs rounded',
+};
+
+/* -------------------------------------------------------------------------- */
+/* Header building blocks                                                     */
+/* -------------------------------------------------------------------------- */
+
+type ContactVariant = 'inline' | 'stacked' | 'bullets';
+
+function ContactDetails({
+  info,
+  variant,
+  className = '',
+  itemClass = '',
+  linkClass = '',
+  showLocation = true,
+}: {
+  info: CVFormData['personalInfo'];
+  variant: ContactVariant;
+  className?: string;
+  itemClass?: string;
+  linkClass?: string;
+  showLocation?: boolean;
+}) {
+  const entries: { key: string; node: React.ReactNode }[] = [];
+
+  if (nonEmpty(info.email)) entries.push({ key: 'email', node: info.email });
+  if (nonEmpty(info.phone)) entries.push({ key: 'phone', node: info.phone });
+  if (showLocation && nonEmpty(info.location)) {
+    entries.push({ key: 'location', node: info.location });
   }
+  const website = safeHref(info.website);
+  if (website) {
+    entries.push({
+      key: 'website',
+      node: (
+        <a href={website} target="_blank" rel="noopener noreferrer" className={linkClass}>
+          {website.replace(/^https?:\/\//, '')}
+        </a>
+      ),
+    });
+  }
+  const linkedin = safeHref(info.linkedin);
+  if (linkedin) {
+    entries.push({
+      key: 'linkedin',
+      node: (
+        <a href={linkedin} target="_blank" rel="noopener noreferrer" className={linkClass}>
+          LinkedIn
+        </a>
+      ),
+    });
+  }
+
+  if (entries.length === 0) return null;
+
+  if (variant === 'stacked') {
+    return (
+      <div className={className}>
+        {entries.map((entry) => (
+          <p key={entry.key} className={itemClass}>
+            {entry.node}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  if (variant === 'bullets') {
+    return (
+      <div className={className}>
+        {entries.map((entry, index) => (
+          <span key={entry.key} className={itemClass}>
+            {index > 0 && <span className="mx-2">•</span>}
+            {entry.node}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-wrap gap-4 ${className}`}>
+      {entries.map((entry) => (
+        <span key={entry.key} className={itemClass}>
+          {entry.node}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Section splits                                                             */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Splits the section list across two columns while guaranteeing that nothing is
+ * dropped: anything the preferred column cannot show still lands in the other.
+ */
+function splitSections(data: CVFormData) {
+  const aside = ASIDE_SECTIONS.filter((key) => hasSection(key, data));
+  const main = MAIN_SECTIONS.filter((key) => hasSection(key, data));
+  return { aside, main };
+}
+
+/* -------------------------------------------------------------------------- */
+/* Templates                                                                  */
+/* -------------------------------------------------------------------------- */
+
+interface TemplateProps {
+  ctx: RenderContext;
+  cn: string;
+  dir: 'ltr' | 'rtl';
+}
+
+function Modern({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+  const { aside, main } = splitSections(ctx.data);
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="h-2 bg-teal-600 w-full" />
+      <div className="p-8">
+        <header className="mb-6 flex items-start gap-6">
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={120}
+            className="h-28 w-28 flex-shrink-0 rounded-full object-cover border-2 border-teal-600"
+          />
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">
+              {personalInfo.name || ctx.L.namePlaceholder}
+            </h1>
+            <ContactDetails
+              info={personalInfo}
+              variant="inline"
+              className="text-sm text-stone-600"
+              linkClass="text-teal-600 hover:underline"
+            />
+          </div>
+        </header>
+        <div className="grid grid-cols-3 gap-6">
+          <Sections keys={aside} ctx={ctx} tone={tealTone} className="col-span-1 space-y-5" />
+          <Sections keys={main} ctx={ctx} tone={tealTone} className="col-span-2 space-y-6" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Classic({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="flex min-h-full">
+        <div className="w-2 flex-shrink-0 bg-teal-700" />
+        <div className="flex-1 p-8">
+          <header className="mb-6 flex items-start gap-5">
+            <ProfilePhoto
+              src={personalInfo.profilePhoto}
+              alt={personalInfo.name || ctx.L.namePlaceholder}
+              size={96}
+              className="h-24 w-24 flex-shrink-0 rounded-full object-cover border-2 border-teal-700"
+            />
+            <div>
+              <h1 className="text-3xl font-bold text-stone-900 mb-1">
+                {personalInfo.name || ctx.L.namePlaceholder}
+              </h1>
+              <ContactDetails
+                info={personalInfo}
+                variant="inline"
+                className="text-sm text-stone-600"
+                linkClass="text-teal-700 hover:underline"
+              />
+            </div>
+          </header>
+          <Sections keys={ALL_SECTIONS} ctx={ctx} tone={tealTone} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Minimal({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-12">
+        <header className="text-center">
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={112}
+            className="mx-auto mb-6 h-28 w-28 rounded-full object-cover border border-stone-300"
+          />
+          <h1 className="text-4xl font-light text-stone-900 mb-2">
+            {personalInfo.name || ctx.L.namePlaceholder}
+          </h1>
+          <ContactDetails
+            info={personalInfo}
+            variant="inline"
+            className="justify-center text-sm text-stone-500"
+            linkClass="text-teal-600 hover:underline"
+          />
+        </header>
+        <div className="h-px bg-stone-200 w-full my-8" />
+        <div className="max-w-2xl mx-auto">
+          <Sections keys={ALL_SECTIONS} ctx={ctx} tone={stoneTone} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Professional({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-8">
+        <header className="flex items-start gap-6 mb-6">
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={96}
+            className="h-24 w-24 flex-shrink-0 rounded-full object-cover border-2 border-stone-300"
+          />
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">
+              {personalInfo.name || ctx.L.namePlaceholder}
+            </h1>
+            <ContactDetails
+              info={personalInfo}
+              variant="inline"
+              className="text-sm text-stone-600"
+              linkClass="text-teal-600 hover:underline"
+            />
+          </div>
+        </header>
+        <div className="h-px bg-stone-300 mb-6" />
+        <Sections keys={ALL_SECTIONS} ctx={ctx} tone={borderedTone} />
+      </div>
+    </div>
+  );
+}
+
+function Executive({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+  const { aside, main } = splitSections(ctx.data);
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="h-3 bg-stone-900 w-full" />
+      <div className="p-8">
+        <header className="text-center mb-8">
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={112}
+            className="mx-auto mb-4 h-28 w-28 rounded-full object-cover border-4 border-stone-900"
+          />
+          <h1 className="text-4xl font-bold text-stone-900 mb-2">
+            {personalInfo.name || ctx.L.namePlaceholder}
+          </h1>
+          <ContactDetails
+            info={personalInfo}
+            variant="inline"
+            className="justify-center text-sm text-stone-600"
+            linkClass="text-teal-600 hover:underline"
+          />
+        </header>
+        <div className="grid grid-cols-2 gap-8">
+          <Sections keys={aside} ctx={ctx} tone={stoneTone} />
+          <Sections keys={main} ctx={ctx} tone={stoneTone} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Technical({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo, skills } = ctx.data;
+  const topSkills = skills.filter(nonEmpty).slice(0, 8);
+  const bodySections = ALL_SECTIONS.filter((key) => key !== 'skills');
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-8 bg-stone-50">
+        <header className="flex justify-between items-start gap-6 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">
+              {personalInfo.name || ctx.L.namePlaceholder}
+            </h1>
+            <ContactDetails
+              info={personalInfo}
+              variant="stacked"
+              className="text-sm text-stone-600"
+              linkClass="text-teal-600 hover:underline"
+            />
+          </div>
+          {topSkills.length > 0 && (
+            <div className="flex flex-wrap justify-end gap-2 max-w-xs">
+              {topSkills.map((skill, index) => (
+                <span key={index} className={technicalTone.chip}>
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+        </header>
+        <Sections keys={bodySections} ctx={ctx} tone={technicalTone} />
+      </div>
+    </div>
+  );
+}
+
+function Developer({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="h-2 bg-stone-800 w-full" />
+      <div className="p-8">
+        <header className="mb-6">
+          <h1 className="text-3xl font-mono font-bold text-stone-900 mb-2">
+            {personalInfo.name || ctx.L.namePlaceholder}
+          </h1>
+          <ContactDetails
+            info={personalInfo}
+            variant="bullets"
+            className="text-sm font-mono text-stone-600"
+            linkClass="text-teal-600 hover:underline"
+          />
+        </header>
+        <Sections keys={ALL_SECTIONS} ctx={ctx} tone={monoTone} />
+      </div>
+    </div>
+  );
+}
+
+function Elegant({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="flex min-h-full">
+        <div className="w-3 flex-shrink-0 bg-stone-100" />
+        <div className="flex-1 p-8 border-l border-stone-200">
+          <header className="mb-6 flex items-start gap-5">
+            <ProfilePhoto
+              src={personalInfo.profilePhoto}
+              alt={personalInfo.name || ctx.L.namePlaceholder}
+              size={96}
+              className="h-24 w-24 flex-shrink-0 rounded-full object-cover border border-stone-300"
+            />
+            <div>
+              <h1 className="text-3xl font-light tracking-wide text-stone-900 mb-2">
+                {personalInfo.name || ctx.L.namePlaceholder}
+              </h1>
+              <ContactDetails
+                info={personalInfo}
+                variant="inline"
+                className="text-sm text-stone-500"
+                linkClass="text-teal-600 hover:underline"
+              />
+            </div>
+          </header>
+          <Sections keys={ALL_SECTIONS} ctx={ctx} tone={elegantTone} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Corporate({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+  const { aside, main } = splitSections(ctx.data);
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-8">
+        <header>
+          <h1 className="text-2xl font-bold text-stone-900 mb-1">
+            {personalInfo.name || ctx.L.namePlaceholder}
+          </h1>
+          <ContactDetails
+            info={personalInfo}
+            variant="bullets"
+            className="text-sm text-stone-500"
+            linkClass="text-teal-600 hover:underline"
+          />
+        </header>
+        <div className="h-px bg-stone-300 my-4" />
+        <div className="grid grid-cols-2 gap-6">
+          <Sections keys={main} ctx={ctx} tone={compactBorderedTone} />
+          <Sections keys={aside} ctx={ctx} tone={compactBorderedTone} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Clean({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-12">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-light text-stone-900 mb-3">
+            {personalInfo.name || ctx.L.namePlaceholder}
+          </h1>
+          <ContactDetails
+            info={personalInfo}
+            variant="inline"
+            className="justify-center gap-6 text-sm text-stone-500"
+            linkClass="text-teal-600 hover:underline"
+          />
+        </header>
+        <div className="h-px bg-stone-200 w-3/4 mx-auto mb-8" />
+        <div className="max-w-2xl mx-auto">
+          <Sections keys={ALL_SECTIONS} ctx={ctx} tone={centeredTone} className="space-y-8" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Creative({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+  const { aside, main } = splitSections(ctx.data);
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-8">
+        <header className="flex gap-4 mb-6">
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={80}
+            className="h-20 w-20 flex-shrink-0 rounded-full object-cover border-2 border-teal-500"
+          />
+          <div className="w-2 flex-shrink-0 rounded-full bg-teal-500" />
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-stone-900 mb-1">
+              {personalInfo.name || ctx.L.namePlaceholder}
+            </h1>
+            <ContactDetails
+              info={personalInfo}
+              variant="bullets"
+              className="text-sm text-stone-500"
+              linkClass="text-teal-600 hover:underline"
+            />
+          </div>
+        </header>
+        <div className="border-l-2 border-stone-200 pl-4 grid grid-cols-3 gap-6">
+          <Sections keys={aside} ctx={ctx} tone={tealTone} className="col-span-1 space-y-5" />
+          <Sections keys={main} ctx={ctx} tone={tealTone} className="col-span-2 space-y-6" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Artistic({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+  const { aside, main } = splitSections(ctx.data);
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="h-6 bg-teal-600 w-full" />
+      <div className="p-8">
+        <header className="flex gap-6 mb-6">
+          <div className="w-1/3 flex-shrink-0">
+            <ProfilePhoto
+              src={personalInfo.profilePhoto}
+              alt={personalInfo.name || ctx.L.namePlaceholder}
+              size={200}
+              className="w-full rounded object-cover"
+            />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold text-stone-900 mb-2">
+              {personalInfo.name || ctx.L.namePlaceholder}
+            </h1>
+            <ContactDetails
+              info={personalInfo}
+              variant="stacked"
+              className="text-sm text-stone-500"
+              linkClass="text-teal-600 hover:underline"
+            />
+          </div>
+        </header>
+        <div className="grid grid-cols-3 gap-6">
+          <Sections keys={aside} ctx={ctx} tone={tealTone} className="col-span-1 space-y-5" />
+          <Sections keys={main} ctx={ctx} tone={tealTone} className="col-span-2 space-y-6" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Innovative({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-8">
+        <header className="flex gap-4 mb-6">
+          <div className="flex-1">
+            <h1 className="text-4xl font-bold text-stone-900 mb-2">
+              {personalInfo.name || ctx.L.namePlaceholder}
+            </h1>
+            <ContactDetails
+              info={personalInfo}
+              variant="inline"
+              className="text-sm text-stone-500"
+              linkClass="text-teal-600 hover:underline"
+            />
+          </div>
+          <div className="w-2 self-stretch rounded bg-teal-500" />
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={80}
+            className="h-20 w-20 flex-shrink-0 rounded object-cover"
+          />
+        </header>
+        <Sections keys={ALL_SECTIONS} ctx={ctx} tone={tealTone} />
+      </div>
+    </div>
+  );
+}
+
+function Portfolio({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="flex min-h-full">
+        <div className="w-24 flex-shrink-0 bg-stone-300">
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={96}
+            className="h-24 w-24 object-cover"
+          />
+        </div>
+        <div className="flex-1 p-8">
+          <header className="mb-6">
+            <h1 className="text-3xl font-bold text-stone-900 mb-2">
+              {personalInfo.name || ctx.L.namePlaceholder}
+            </h1>
+            <ContactDetails
+              info={personalInfo}
+              variant="stacked"
+              className="text-sm text-stone-600"
+              linkClass="text-teal-600 hover:underline"
+            />
+          </header>
+          <Sections keys={ALL_SECTIONS} ctx={ctx} tone={stoneTone} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Academic({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-8">
+        <header className="text-center mb-6">
+          <ProfilePhoto
+            src={personalInfo.profilePhoto}
+            alt={personalInfo.name || ctx.L.namePlaceholder}
+            size={112}
+            className="mx-auto mb-4 h-28 w-28 rounded-full object-cover border border-stone-300"
+          />
+          <h1 className="text-3xl font-bold text-stone-900 mb-2">
+            {personalInfo.name || ctx.L.namePlaceholder}
+          </h1>
+          <ContactDetails
+            info={personalInfo}
+            variant="bullets"
+            className="text-sm text-stone-500"
+            linkClass="text-teal-600 hover:underline"
+          />
+        </header>
+        <div className="h-px bg-stone-300 mb-6" />
+        <Sections keys={ALL_SECTIONS} ctx={ctx} tone={stoneTone} />
+      </div>
+    </div>
+  );
+}
+
+function Scholar({ ctx, cn, dir }: TemplateProps) {
+  const { personalInfo } = ctx.data;
+
+  return (
+    <div className={cn} dir={dir} style={PAGE_STYLE}>
+      <div className="p-10">
+        <header className="text-center mb-4">
+          <h1 className="text-3xl font-serif font-bold text-stone-900 mb-2">
+            {personalInfo.name || ctx.L.namePlaceholder}
+          </h1>
+          <ContactDetails
+            info={personalInfo}
+            variant="bullets"
+            className="text-sm text-stone-500"
+            linkClass="text-teal-600 hover:underline"
+          />
+        </header>
+        <div className="h-px bg-stone-300 mb-6" />
+        <Sections keys={ALL_SECTIONS} ctx={ctx} tone={elegantTone} />
+      </div>
+    </div>
+  );
+}
+
+const TEMPLATES: Record<TemplateVariant, (props: TemplateProps) => React.ReactElement> = {
+  modern: Modern,
+  classic: Classic,
+  minimal: Minimal,
+  professional: Professional,
+  executive: Executive,
+  technical: Technical,
+  developer: Developer,
+  elegant: Elegant,
+  corporate: Corporate,
+  clean: Clean,
+  creative: Creative,
+  artistic: Artistic,
+  innovative: Innovative,
+  portfolio: Portfolio,
+  academic: Academic,
+  scholar: Scholar,
+};
+
+export default function CVRender({
+  data,
+  templateId = DEFAULT_TEMPLATE,
+  className = '',
+  locale = defaultLocale,
+}: CVRenderProps) {
+  const ctx: RenderContext = {
+    data,
+    L: getCVLabels(locale),
+    fmt: (value?: string) => formatCVDate(value, locale),
+  };
+
+  const Template = TEMPLATES[templateId] ?? TEMPLATES[DEFAULT_TEMPLATE];
+  const cn = `bg-white text-stone-900 ${className}`.trim();
+
+  return <Template ctx={ctx} cn={cn} dir={textDirection(locale)} />;
 }

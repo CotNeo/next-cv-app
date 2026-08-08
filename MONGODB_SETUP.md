@@ -1,54 +1,94 @@
-# MongoDB Setup for Test User Creation
+# MongoDB setup
 
-MongoDB authentication gerekiyor. Test kullanıcısı oluşturmak için aşağıdaki adımları izleyin.
+CV Builder needs a MongoDB database. Set the connection string as `MONGODB_URI` in `.env.local`.
 
-**Vercel / Preview ortamı:** Deploy edilen ortamda test kullanıcısı için `MONGODB_URI` ve diğer env’leri Vercel Dashboard → Project → Settings → Environment Variables üzerinden tanımlayın; script sadece yerel çalıştırma içindir.
+Indexes are declared on the Mongoose models and created automatically on first connect — no migration step.
 
-## Seçenek 1: MongoDB Authentication ile
+---
 
-1. MongoDB kullanıcı adı ve şifrenizi `.env.local` dosyasına ekleyin:
+## Local
 
-```env
-MONGODB_URI=mongodb://username:password@localhost:27017/cv-builder
-```
-
-2. Script'i çalıştırın:
+### Docker (quickest)
 
 ```bash
-npm run create-test-user
+docker run -d --name cv-mongo -p 27017:27017 mongo:7
 ```
-
-## Seçenek 2: MongoDB Authentication Olmadan
-
-MongoDB'de authentication'ı geçici olarak devre dışı bırakın:
-
-1. MongoDB config dosyasını düzenleyin (`/etc/mongod.conf` veya MongoDB Atlas ayarları)
-2. Authentication'ı kaldırın
-3. MongoDB'yi yeniden başlatın
-4. Script'i çalıştırın
-
-## Seçenek 3: MongoDB'de Admin Kullanıcısı Oluşturma
-
-MongoDB shell'de:
-
-```javascript
-use admin
-db.createUser({
-  user: "admin",
-  pwd: "your-password",
-  roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
-})
-```
-
-Sonra `.env.local` dosyasını güncelleyin:
 
 ```env
-MONGODB_URI=mongodb://admin:your-password@localhost:27017/cv-builder
+MONGODB_URI=mongodb://localhost:27017/cv-builder
 ```
 
-## Test Kullanıcısı Bilgileri
+With authentication enabled:
 
-Oluşturulacak test kullanıcısı:
-- **Email:** `test@example.com`
-- **Şifre:** `test123456`
-- **İsim:** `Test User`
+```bash
+docker run -d --name cv-mongo -p 27017:27017 \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD=your-password \
+  mongo:7
+```
+
+```env
+MONGODB_URI=mongodb://admin:your-password@localhost:27017/cv-builder?authSource=admin
+```
+
+`authSource` matters: the user is defined in the `admin` database, not in `cv-builder`.
+
+### Native install
+
+macOS:
+
+```bash
+brew tap mongodb/brew && brew install mongodb-community
+brew services start mongodb-community
+```
+
+Then `MONGODB_URI=mongodb://localhost:27017/cv-builder`.
+
+---
+
+## Hosted
+
+### MongoDB Atlas (recommended for production)
+
+1. Create a cluster.
+2. Database Access → add a user with a strong password.
+3. Network Access → allow your deployment's egress IPs, or set up VPC peering. Avoid `0.0.0.0/0` in production.
+4. Copy the connection string:
+
+```env
+MONGODB_URI=mongodb+srv://USER:PASS@cluster.mongodb.net/cv-builder?retryWrites=true&w=majority
+```
+
+URL-encode special characters in the password — `@` becomes `%40`, `#` becomes `%23`, and so on.
+
+In production the app **rejects** the localhost default, so `MONGODB_URI` must be set explicitly.
+
+### Other providers
+
+Any MongoDB-compatible service works (DigitalOcean, Railway, Render). Use the provider's connection string as-is.
+
+---
+
+## Verifying
+
+Start the app and check the health endpoint:
+
+```bash
+curl -s localhost:3000/api/health
+# {"status":"ok","checks":{"database":"up","ai":"configured"},...}
+```
+
+`"database":"down"` and a 503 mean the URI, credentials or network rules are wrong.
+
+## Troubleshooting
+
+| Symptom | Cause |
+|---------|-------|
+| `ECONNREFUSED` | MongoDB is not running, or the host/port is wrong |
+| `Authentication failed` | Wrong credentials, or a missing `authSource=admin` |
+| `querySrv ENOTFOUND` | Malformed `mongodb+srv://` host |
+| Timeouts from a deployed instance | The host's IP is not in the Atlas network allowlist |
+
+Connections are pooled and cached across invocations ([src/lib/mongodb.ts](src/lib/mongodb.ts)), so a single process never opens more than one pool.
+
+Test account: [TEST_USER.md](TEST_USER.md).
